@@ -1,0 +1,28 @@
+# Python reference solver
+solver-server/.venv/
+__pycache__/
+.pytest_cache/
+
+# Build output (zips made for sharing)
+*.zip
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Dumps with account identifiers, or not used by tests. Review a dump before adding it.
+test/fixtures/probe-*.json
+test/fixtures/gallery-probe-*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+node_modules/
+
+# EA Web App source captured by the "Rating code" dump: EA's code, keep local
+test/fixtures/rating-code*.json
+
+# Private planning notes
+HANDOFF.md

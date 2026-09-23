@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "FC 27 SBC Solver",
+  "version": "0.9.5",
+  "description": "FC 27 SBC solver: solves inside the browser (HiGHS WebAssembly) and fills the SBC squad. Never submits.",
+  "permissions": [
+    "storage"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*",
+        "https://www.ea.com/*/ea-sports-fc/ultimate-team/web-app/*"
+      ],
+      "js": [
+        "src/page-hook.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*",
+        "https://www.ea.com/*/ea-sports-fc/ultimate-team/web-app/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
