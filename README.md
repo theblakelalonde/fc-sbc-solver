@@ -8,14 +8,14 @@ Everything runs inside your browser: no server, no account, nothing to install b
 
 ## Install
 
-1. **Code → Download ZIP** on this page, then unzip it somewhere you'll keep it (Chrome loads the extension from that folder).
+1. Download `fc27-sbc-solver-vX.Y.Z.zip` from the [latest release](../../releases/latest) and unzip it somewhere you'll keep it (Chrome loads the extension from that folder).
 2. Open `chrome://extensions` and turn on **Developer mode** (top-right).
-3. **Load unpacked** → select the `extension` folder (the one containing `manifest.json`).
+3. **Load unpacked** → select the unzipped `fc27-sbc-solver-vX.Y.Z` folder (the one containing `manifest.json`).
 4. Open the [FC 27 Web App](https://www.ea.com/ea-sports-fc/ultimate-team/web-app/) and press F5.
 
 The **SBC Solver** panel appears bottom-left. Its pill should say **Solver ready** (green).
 
-**Update:** download the new ZIP, replace the folder's contents, press reload ↻ on the extension card, then F5 the Web App.
+**Update:** download the new release, replace the folder's contents with it, press reload ↻ on the extension card, then F5 the Web App. (Keeping the same folder keeps your settings.)
 
 Chrome may warn about developer-mode extensions on startup; that's normal for unpacked extensions.
 
@@ -42,7 +42,9 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 
 ## Development
 
-After editing files: reload the extension card, then F5 the Web App tab.
+Run from source: **Load unpacked** the repo's `extension/` folder. After editing files: reload the extension card, then F5 the Web App tab.
+
+**Releasing:** bump `"version"` in `extension/manifest.json`, commit, then push a matching tag (`git tag v0.9.6`, `git push origin v0.9.6`). The [release workflow](.github/workflows/release.yml) builds the zip and publishes the release.
 
 Tests (Node 20+), about 90 s, using the dumps in `test/fixtures/`:
 
