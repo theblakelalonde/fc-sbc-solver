@@ -319,8 +319,10 @@
     return { close };
   }
 
-  // sections: [{ id, name, players: [details] }]. Resolves with the ids to fill, or null if cancelled.
-  function showPreview({ title, subtitle, notes, sections, confirmLabel }) {
+  // sections: [{ id, name, players: [details] }]. Resolves with { ids, submit } for the squads left
+  // toggled on ("Complete" = fill and submit, the default; "Fill only" = place them), or null if
+  // cancelled.
+  function showPreview({ title, subtitle, notes, sections, confirmLabel = "Complete", fillLabel = "Fill only" }) {
     return new Promise((resolve) => {
       if (!document.getElementById("sbcs-modal-style")) {
         const st = el("style");
@@ -343,6 +345,8 @@
       const included = new Set(sections.map((sec) => sec.id));
       const sum = el("div", "sum");
       const go = el("button", "go");
+      const fillOnly = el("button", "", fillLabel);
+      fillOnly.title = "Place the squads without submitting; you submit each one yourself.";
       const refresh = () => {
         const chosen = sections.filter((sec) => included.has(sec.id));
         const players = chosen.flatMap((sec) => sec.players);
@@ -351,7 +355,9 @@
         sum.textContent = `${chosen.length} squad${chosen.length === 1 ? "" : "s"} · ${players.length} players · value ${fmt(value)}`
           + (tradable ? ` · ${tradable} tradeable` : " · no tradeable cards");
         go.textContent = `${confirmLabel} (${chosen.length})`;
+        go.title = `Fill and submit ${chosen.length === 1 ? "this squad" : `these ${chosen.length} squads`}. Submitting can't be undone.`;
         go.disabled = !chosen.length;
+        fillOnly.disabled = !chosen.length;
       };
       for (const sec of sections) {
         const box = el("div", "sec");
@@ -386,9 +392,12 @@
         }
       };
       cancel.addEventListener("click", () => close(null));
-      go.addEventListener("click", () => close([...included]));
+      // Keep the modal's order (the list order) for what gets filled / submitted.
+      const picked = () => sections.map((sec) => sec.id).filter((id) => included.has(id));
+      go.addEventListener("click", () => close({ ids: picked(), submit: true }));
+      fillOnly.addEventListener("click", () => close({ ids: picked(), submit: false }));
       document.addEventListener("keydown", onKey, true);
-      foot.append(sum, cancel, go);
+      foot.append(sum, cancel, fillOnly, go);
       dlg.append(scroll, foot);
       overlay.append(dlg);
       document.body.append(overlay);
@@ -936,19 +945,25 @@
         const ids = solved.flatMap((c) => c.solution.slots.map((x) => x.playerId));
         const details = await request("describePlayers", { args: { ids }, timeoutMs: 5000 });
         showBusy("Waiting for you to confirm…");
-        const chosenIds = await showPreview({
+        const choice = await showPreview({
           title: `${input.sbc.challenge.name}: ${solved.length} completions`,
-          subtitle: `Solved in ${res.stats?.wallTimeS ?? "?"}s · no player used twice · the first squad is placed now; the rest wait for you to submit`,
+          subtitle: `Solved in ${res.stats?.wallTimeS ?? "?"}s · no player used twice · Complete fills and submits each squad left on; Fill only places the first and saves the rest`,
           notes: solved.length < times ? [`Only ${solved.length} of ${times} squads are possible with your club.`] : [],
           sections: solved.map((c) => ({
             id: c.challengeId,
             name: c.name,
             players: c.solution.slots.map((x) => ({ name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, ...(details[x.playerId] || {}) }))
-          })),
-          confirmLabel: "Use squads"
+          }))
         });
-        if (!chosenIds) return showDone("Cancelled. Nothing was changed.");
-        const queue = solved.filter((c) => chosenIds.includes(c.challengeId)).map((c) => ({ plan: planOf(c.solution), sol: c.solution }));
+        if (!choice) return showDone("Cancelled. Nothing was changed.");
+        const queue = choice.ids.map((cid) => solved.find((c) => c.challengeId === cid)).map((c) => ({ plan: planOf(c.solution), sol: c.solution }));
+        if (choice.submit) {
+          const done = await request("completeRepeat", { onProgress: showBusy, args: { challengeId: id, squads: queue.map((q) => q.plan) } });
+          clubChanged();
+          delete savedSquads[id];
+          showCompleted(done, input.sbc.challenge.name);
+          return;
+        }
         const first = queue.shift();
         const app = await request("fillSquad", { onProgress: showBusy, args: { challengeId: id, slots: first.plan } });
         savedSquads[id] = queue;
@@ -963,6 +978,14 @@
         setBusy(false);
         pollContext();
       }
+    }
+
+    // Result of "Complete": how many were submitted, and why it stopped early (if it did).
+    function showCompleted(done, name) {
+      const { submitted, total, error } = done;
+      if (!submitted) return showDone(`Nothing was submitted. ${error || ""}`.trim(), "bad");
+      const what = total === 1 ? `${name} submitted.` : `Submitted ${submitted} of ${total} squads for ${name}.`;
+      showDone(error ? `${what} Stopped: ${error}` : `${what} Rewards are in your Unassigned items / My Packs.`, error ? "warn" : "ok");
     }
 
     async function fillNextSaved(id) {
@@ -1309,9 +1332,9 @@
           .filter((c) => c.status !== "solved")
           .map((c) => `${c.name}: ${SET_STATUS_TEXT[c.status] || c.status}`);
         showBusy("Waiting for you to confirm…");
-        const chosenIds = await showPreview({
+        const choice = await showPreview({
           title: `${input.setName}: preview`,
-          subtitle: `${solvable.length} of ${n} challenges solved in ${res.stats?.wallTimeS ?? "?"}s · no player used twice`,
+          subtitle: `${solvable.length} of ${n} challenges solved in ${res.stats?.wallTimeS ?? "?"}s · no player used twice · Complete fills and submits each one left on`,
           notes: skippedNotes.length ? ["Can't be filled:", ...skippedNotes] : [],
           sections: solvable.map((c) => ({
             id: c.challengeId,
@@ -1319,20 +1342,19 @@
             players: c.solution.slots.map((x) => ({
               name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, ...(details[x.playerId] || {})
             }))
-          })),
-          confirmLabel: "Fill squads"
+          }))
         });
-        if (!chosenIds) return showDone("Cancelled. Nothing was changed.");
-        const chosen = solvable.filter((c) => chosenIds.includes(c.challengeId));
-        const fill = await request("fillSet", {
-          onProgress: showBusy,
-          args: {
-            plan: chosen.map((c) => ({
-              challengeId: c.challengeId,
-              slots: c.solution.slots.map((x) => ({ slotIndex: x.slotIndex, playerId: x.playerId }))
-            }))
-          }
-        });
+        if (!choice) return showDone("Cancelled. Nothing was changed.");
+        const chosen = solvable.filter((c) => choice.ids.includes(c.challengeId));
+        const plan = chosen.map((c) => ({ challengeId: c.challengeId, slots: planOf(c.solution) }));
+        if (choice.submit) {
+          const done = await request("completeSet", { onProgress: showBusy, args: { plan } });
+          clubChanged();
+          showCompleted(done, input.setName);
+          result.append(setCard(res, done.results));
+          return;
+        }
+        const fill = await request("fillSet", { onProgress: showBusy, args: { plan } });
         clubChanged();
         const failed = fill.results.find((r) => !r.ok);
         const skipped = n - chosen.length;

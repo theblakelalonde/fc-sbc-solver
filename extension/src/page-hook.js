@@ -1053,6 +1053,116 @@
     return { results };
   }
 
+  // ---------- complete (fill + submit) ----------
+  // Runs when the preview modal's "Complete" is pressed, for the squads left toggled on. Each
+  // squad is placed, saved, checked against the app's own requirement check, then submitted
+  // (services.SBC.submitChallenge, the call the app makes; same pattern as the MIT-licensed
+  // AutoSBC userscript). Stops at the first problem; earlier submissions stay submitted.
+
+  const SUBMIT_PAUSE_MS = [1200, 2200]; // between submissions
+
+  function checkSubmittable() {
+    if (typeof g("services")?.SBC?.submitChallenge !== "function") throw new Error("services.SBC.submitChallenge missing (EA update?)");
+  }
+
+  async function submitOne(challenge, set, progress, label) {
+    const state = squadState(challenge);
+    if (state.meetsRequirements === false || state.canSubmit === false) {
+      throw new Error(`${label}: the app says the squad doesn't meet the requirements, so it wasn't submitted`);
+    }
+    progress(`Submitting ${label}…`);
+    const chem = callIfFn(g("services")?.Chemistry, "isFeatureEnabled");
+    const res = await observeOnce(g("services").SBC.submitChallenge(challenge, set, true, chem !== false), 30000);
+    if (!res?.success) throw new Error(`${label}: EA rejected the submission (status ${res?.status ?? "?"})`);
+  }
+
+  // The same repeatable challenge again, fresh after a submission.
+  async function reloadChallenge(set, id, progress) {
+    const services = g("services");
+    await sleep(jitter(SET_LOAD_PAUSE_MS));
+    const listed = await observeOnce(services.SBC.requestChallengesForSet(set));
+    const list = listed?.data?.challenges || listed?.response?.challenges;
+    const ch = Array.isArray(list) ? list.find((c) => c.id === id) : null;
+    if (!ch) throw new Error("the SBC can't be repeated any more");
+    progress(`Loading ${ch.name} again…`);
+    const res = await observeOnce(services.SBC.loadChallenge(ch));
+    if (!res?.success || !isObj(ch.squad)) throw new Error(`couldn't load "${ch.name}" again`);
+    return ch;
+  }
+
+  // After submitting the open challenge its screen is stale: go back like the app does.
+  function leaveSubmittedScreen() {
+    for (const node of activeControllers()) {
+      if (typeof node.popViewController === "function" && /Navigation/.test(node.className || ctorName(node) || "")) {
+        try {
+          node.popViewController(true);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  // One repeatable SBC, several squads: fill → submit → reload → fill → submit …
+  async function completeRepeat(progress, args) {
+    const squads = Array.isArray(args?.squads) ? args.squads : [];
+    if (!squads.length) throw new Error("Nothing to complete.");
+    const open = currentChallenge();
+    if (!open || open.id !== args.challengeId) throw new Error("A different SBC is open now. Run Auto Complete again.");
+    const set = currentSet(open);
+    if (!isObj(set)) throw new Error("Couldn't find this SBC's set.");
+    checkSubmittable();
+    let submitted = 0;
+    let error = null;
+    lastFill = null;
+    for (const [n, slots] of squads.entries()) {
+      const label = squads.length > 1 ? `squad ${n + 1} of ${squads.length}` : "the squad";
+      try {
+        const ch = n === 0 ? open : await reloadChallenge(set, open.id, progress);
+        checkFillable(ch);
+        const { planned } = plannedItems(ch, slots, itemsById());
+        await applySquad(ch, planned, progress, `Placing ${label}`);
+        await submitOne(ch, set, progress, label);
+        submitted++;
+      } catch (e) {
+        error = e.message;
+        break;
+      }
+      if (n < squads.length - 1) await sleep(jitter(SUBMIT_PAUSE_MS));
+    }
+    if (submitted) leaveSubmittedScreen();
+    return { submitted, total: squads.length, error };
+  }
+
+  // Whole set: fill every chosen challenge (fillSet), then submit them one by one.
+  async function completeSet(progress, args) {
+    checkSubmittable();
+    const openId = currentChallenge()?.id;
+    const fill = await fillSet(progress, args);
+    const filled = fill.results.filter((r) => r.ok);
+    let submitted = 0;
+    let error = fill.results.find((r) => !r.ok)?.error ?? null;
+    for (const [n, r] of filled.entries()) {
+      const ch = challengeEntity(r.challengeId);
+      const set = (ch && currentSet(ch)) || setOnScreen();
+      const label = `${ch?.name ?? "challenge"} (${n + 1} of ${filled.length})`;
+      try {
+        if (!ch || !isObj(set)) throw new Error(`${label}: couldn't find it any more`);
+        await sleep(jitter(SUBMIT_PAUSE_MS));
+        await submitOne(ch, set, progress, label);
+        submitted++;
+      } catch (e) {
+        error = e.message;
+        break;
+      }
+    }
+    lastFill = null; // submitted squads can't be undone
+    if (submitted && openId && filled.some((r) => r.challengeId === openId)) leaveSubmittedScreen();
+    return { submitted, total: (args?.plan || []).length, error, results: fill.results };
+  }
+
   // ---------- player details for the preview modal ----------
 
   function itemName(item) {
@@ -2055,7 +2165,7 @@
 
   const COMMANDS = {
     probe, dumpClub, dumpSbc, dumpAllSbcs, ratingCode, solveInput, fillSquad, undoFill,
-    setInput, fillSet, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
+    setInput, fillSet, completeRepeat, completeSet, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
     galleryProbe, exportSlots, seedSlots
   };
   const QUICK = new Set(["context", "setPriceOverlay", "describePlayers", "setTileValue", "seedFormations", "exportSlots", "seedSlots"]); // instant and read-mostly: allowed while busy

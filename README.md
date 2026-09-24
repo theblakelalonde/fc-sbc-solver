@@ -1,10 +1,10 @@
 # FC 27 SBC Solver
 
-Chrome extension for the EA SPORTS FC 27 Ultimate Team Web App. It finds the cheapest squad from your own club for a Squad Building Challenge and places it on the pitch. You review it and press Submit yourself.
+Chrome extension for the EA SPORTS FC 27 Ultimate Team Web App. It finds the cheapest squad from your own club for a Squad Building Challenge and places it on the pitch. For repeated SBCs and whole sets it can also submit every squad for you, back to back.
 
 Everything runs inside your browser: no server, no account, nothing to install beyond loading the extension.
 
-> Not affiliated with or endorsed by EA. Third-party tools may be against EA's terms of service; use at your own risk. The extension never submits SBCs, never buys, lists or bids, and never touches the transfer market.
+> Not affiliated with or endorsed by EA. Third-party tools may be against EA's terms of service; use at your own risk. The extension only submits SBCs when you press **Complete** in its preview, and never buys, lists or bids, or touches the transfer market.
 
 ## Install
 
@@ -25,7 +25,7 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 2. Pick options (tradeable players, special players, storage first, exclude active squad, solve multiple times, rating ranges, …) and press **Generate solution**.
 3. Check the squad, then press **Submit** in the app. **Undo fill** in the panel puts back what was there before.
 
-- **Whole sets / solve multiple times:** a preview lists every squad (no player used twice) before anything is placed. If your club can't cover all of them, you get the ones that are possible.
+- **Whole sets / solve multiple times:** a preview lists every squad (no player used twice) before anything is placed. Toggle off any you don't want, then press **Complete** (the default) to fill and submit each remaining squad back to back, or **Fill only** to place them and submit yourself. If your club can't cover all of them, you get the ones that are possible. Submitting can't be undone; it stops at the first squad the app doesn't accept.
 - **Price badges on cards:** coin value (EA market average), green `$` = tradeable, grey 🚫 = untradeable, blue = from SBC storage. Values with `~` and a dashed border are estimates (EA has no price for that card): the median EA price of your own cards with the same rating.
 - **Squad value** in the SBC header, and a value summary on store pack previews.
 - ⚙ in the panel: price badges on/off, time limit, max player value. Click the panel header to collapse it.
@@ -73,3 +73,4 @@ python -m venv .venv
 
 - [HiGHS](https://highs.dev) / [highs-js](https://github.com/lovasoa/highs-js) (MIT): the optimizer.
 - FSU (`color8892/fsu-fut-enhancer`, MIT) was read as a reference for Web App internals; no code copied. It bundles market automation that this project deliberately excludes.
+- EAFC Automated SBC Solving userscript (MIT): reference for the Web App's SBC submit call.
