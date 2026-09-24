@@ -96,6 +96,6 @@ def exclusion_reason(p: Player, opts: CostOptions) -> str | None:
         return "locked"
     if opts.max_rating is not None and p.rating > opts.max_rating:
         return "rating"
-    if p.market_price > opts.max_cost:
+    if opts.max_cost and opts.max_cost > 0 and p.market_price > opts.max_cost:  # 0 = no limit
         return "value"
     return None

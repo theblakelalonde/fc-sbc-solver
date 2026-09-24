@@ -230,7 +230,7 @@
       overrides: new Map(Object.entries(o.overrides || {}).map(([k, v]) => [Number(k), Number(v)])),
       locked: new Set((o.locked || []).map(Number)),
       allowSpecial: !!o.allowSpecial,
-      maxCost: num("maxCost", 50000),
+      maxCost: num("maxCost", 50000) > 0 ? num("maxCost", 50000) : Infinity, // 0 / empty = no limit
       maxRating: num("maxRating", null),
       allowTradeable: o.allowTradeable !== false,
       ignoreExclusions: !!o.ignoreExclusions,

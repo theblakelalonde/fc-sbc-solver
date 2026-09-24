@@ -158,6 +158,8 @@
   #sbcs .row .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #sbcs .drawer{background:#ffffff0d;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
   #sbcs .field{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  #sbcs input.coins{width:100px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:6px;padding:3px 6px;font:inherit;text-align:right}
+  #sbcs input.coins::placeholder{color:#9aa6b8}
   #sbcs input[type=number]{width:100px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:6px;padding:3px 6px;font:inherit}
   #sbcs input[type=checkbox]{accent-color:#27b36a;width:15px;height:15px}
   #sbcs details summary{cursor:pointer;color:#9aa6b8;font-size:12px}
@@ -497,6 +499,45 @@
         row.append(el("span", "", label), input);
         return row;
       };
+      // Coin amount typed with thousands separators ("50,000"); empty or 0 = no limit.
+      const coinsField = (label, key, max) => {
+        const row = el("label", "field");
+        const input = el("input", "coins");
+        Object.assign(input, { type: "text", inputMode: "numeric", placeholder: "No limit", autocomplete: "off" });
+        const show = (v) => (input.value = v > 0 ? v.toLocaleString("en-US") : "");
+        show(settings[key]);
+        let lastDigits = input.value.replace(/\D/g, "");
+        input.addEventListener("input", (e) => {
+          // Reformat as you type, keeping the caret after the same digit.
+          const caret = input.selectionStart ?? input.value.length;
+          let digitsBefore = input.value.slice(0, caret).replace(/\D/g, "").length;
+          let raw = input.value.replace(/\D/g, "");
+          // Deleting a comma removes nothing, so take the digit next to it instead.
+          if (raw === lastDigits && /^delete/.test(e.inputType || "")) {
+            if (e.inputType === "deleteContentBackward" && digitsBefore > 0) {
+              raw = raw.slice(0, digitsBefore - 1) + raw.slice(digitsBefore);
+              digitsBefore--;
+            } else if (e.inputType === "deleteContentForward") {
+              raw = raw.slice(0, digitsBefore) + raw.slice(digitsBefore + 1);
+            }
+          }
+          const digits = raw.replace(/^0+(?=\d)/, "").slice(0, String(max).length);
+          lastDigits = digits;
+          input.value = digits ? Number(digits).toLocaleString("en-US") : "";
+          let pos = 0;
+          for (let seen = 0; pos < input.value.length && seen < digitsBefore; pos++) if (/\d/.test(input.value[pos])) seen++;
+          input.setSelectionRange(pos, pos);
+        });
+        input.addEventListener("change", () => {
+          const v = Math.min(max, Number(input.value.replace(/\D/g, "")) || 0);
+          settings[key] = v;
+          show(v);
+          lastDigits = input.value.replace(/\D/g, "");
+          saveSettings(settings);
+        });
+        row.append(el("span", "", label), input);
+        return row;
+      };
       const toggleField = (label, key, onChange) => {
         const row = el("label", "field");
         const box = el("input");
@@ -513,7 +554,7 @@
       d.append(
         el("div", "muted", "Settings"),
         toggleField("Show prices (cards + squad value)", "showPrices", (v) => applyPrices(v)),
-        numberField("Max player value", "maxCost", 0, 10000000, 1000),
+        coinsField("Max player value", "maxCost", 10000000),
         numberField("Time limit per SBC (s)", "timeLimitS", 2, 60, 1)
       );
       const dev = el("details");
@@ -1163,7 +1204,8 @@
       } else if (/not enough players/.test(status || "")) {
         showDone("Your club doesn't have enough players for that many squads without reusing cards.", "warn");
       } else if (status === "infeasible") {
-        showDone("Your club can't complete this SBC with these options. Try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete.", "warn");
+        const cap = settings.maxCost > 0 ? ` or raise Max player value (⚙, now ${fmt(settings.maxCost)})` : "";
+        showDone(`Your club can't complete this SBC with these options. Try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete${cap}.`, "warn");
       } else {
         showDone("No squad found in time. Try a longer time limit (⚙).", "warn");
       }

@@ -263,3 +263,11 @@ test("solve multiple times: returns the squads that are possible, not nothing", 
   assert.equal(new Set(ids).size, ids.length);
   for (const c of solved) assert.deepEqual(c.solution.validationErrors, []);
 });
+
+test("max player value 0 or empty means no limit", () => {
+  assert.equal(S.costOptions({ maxCost: 0 }).maxCost, Infinity);
+  assert.equal(S.costOptions({ maxCost: "" }).maxCost, 50000);
+  assert.equal(S.costOptions({ maxCost: 20000 }).maxCost, 20000);
+  const ch = challenge([req(K.TEAM_RATING, GREATER, [80])]);
+  assertValid(solve(ch, players, { maxCost: 0 }), ch);
+});
