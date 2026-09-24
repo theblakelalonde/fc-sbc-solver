@@ -13,7 +13,12 @@
     solveUsing: "price", scope: "challenge", excludeActiveSquad: true
   };
   const MAX_SOLVE_TIMES = 10;
-  const DEFAULT_SETTINGS = { timeLimitS: 10, maxCost: 50000, showPrices: true, collapsed: false, auto: DEFAULT_AUTO };
+  // Display toggles: each price feature on its own.
+  const DISPLAY_KEYS = ["showCardPrices", "showSquadValue", "showPackValue", "priceTiles"];
+  const DEFAULT_SETTINGS = {
+    timeLimitS: 10, maxCost: 50000, collapsed: false, auto: DEFAULT_AUTO,
+    showCardPrices: true, showSquadValue: true, showPackValue: true, priceTiles: true
+  };
   const CONTEXT_POLL_MS = 1500;
   const HEALTH_POLL_MS = 15000;
 
@@ -70,6 +75,11 @@
       const { settings } = await chrome.storage.local.get("settings");
       const merged = { ...DEFAULT_SETTINGS, ...(settings || {}) };
       merged.auto = { ...DEFAULT_AUTO, ...(settings?.auto || {}) };
+      // Older versions had one "Show prices" switch: carry it over to all four.
+      if (typeof settings?.showPrices === "boolean") {
+        for (const k of DISPLAY_KEYS) if (typeof settings[k] !== "boolean") merged[k] = settings.showPrices;
+        delete merged.showPrices;
+      }
       if (typeof settings?.allowSpecial === "boolean" && !settings.auto) merged.auto.allowSpecial = settings.allowSpecial;
       return merged;
     } catch {
@@ -451,7 +461,10 @@
     const ctxBox = el("div", "ctx");
     const ctxName = el("div", "name", "No SBC open");
     const ctxSub = el("div", "muted", "Open an SBC's squad screen to start.");
-    ctxBox.append(ctxName, ctxSub);
+    // Hub fallback: set values listed here when the page's tiles can't be found.
+    const hubList = el("div", "rows");
+    hubList.hidden = true;
+    ctxBox.append(ctxName, ctxSub, hubList);
 
     // Normally the "Auto Complete" button sits in the app's own SBC sidebar; these show only if
     // that injection fails (e.g. after an EA update).
@@ -562,7 +575,15 @@
       };
       d.append(
         el("div", "muted", "Settings"),
-        toggleField("Show prices (cards + squad value)", "showPrices", (v) => applyPrices(v)),
+        el("div", "muted", "Show"),
+        toggleField("Price badges on player cards", "showCardPrices", () => applyPrices()),
+        toggleField("Squad value in the SBC header", "showSquadValue", () => applyPrices()),
+        toggleField("Pack value on store previews", "showPackValue", () => applyPrices()),
+        toggleField("SBC values on the SBC page", "priceTiles", (v) => {
+          if (!v) pauseHubWorker();
+          applyPrices();
+        }),
+        el("div", "muted", "Solver"),
         coinsField("Max player value", "maxCost", 10000000),
         numberField("Time limit per SBC (s)", "timeLimitS", 2, 60, 1)
       );
@@ -667,12 +688,13 @@
     async function pollContext() {
       try {
         ctx = await request("context", { timeoutMs: 3000 });
-        if (!pricesApplied) applyPrices(settings.showPrices);
+        if (!pricesApplied) applyPrices();
       } catch {
         ctx = { onSbc: false };
       }
       rememberFormations(ctx.formations);
       rememberSlots(ctx.slotsVersion);
+      if (!ctx.onHub) renderHubList([], {});
       if (ctx.onSbc) {
         ctxName.textContent = ctx.challengeName;
         ctxSub.textContent = ctx.setName && ctx.setChallenges > 1
@@ -683,7 +705,12 @@
         ctxSub.textContent = `Set overview · ${ctx.setCompleted ?? 0}/${ctx.setChallenges} done`;
       } else if (ctx.onHub) {
         ctxName.textContent = "SBC hub";
-        ctxSub.textContent = hubProgress || "Tiles show each set's squad value from your club.";
+        const noTiles = ctx.hubTilesFound === 0;
+        ctxSub.textContent = hubProgress
+          || (!ctx.hubSetsKnown ? "Waiting for the app to load its SBC list…"
+            : noTiles ? `Couldn't find the SBC tiles on this page (${ctx.hubSetsKnown} sets known), so values are listed below.`
+              : `Tiles show each set's squad value from your club (${ctx.hubTilesFound} tiles found).`);
+        renderHubList(noTiles && settings.priceTiles ? ctx.hubSets || [] : [], ctx.hubNames || {});
         startHubWorker(ctx.hubSets || []);
       } else {
         ctxName.textContent = "No SBC open";
@@ -768,6 +795,18 @@
       }
     }
 
+    function renderHubList(ids, names) {
+      hubList.replaceChildren();
+      for (const id of ids) {
+        const v = tileCache[id];
+        const row = el("div", "row");
+        row.append(el("span", "n", names[id] || `Set ${id}`), el("span", v?.tone === "bad" ? "muted" : "", v?.text || "…"));
+        if (v?.title) row.title = v.title;
+        hubList.append(row);
+      }
+      hubList.hidden = !ids.length;
+    }
+
     function showTile(setId, v) {
       return request("setTileValue", { args: { setId, ...v }, timeoutMs: 3000 }).catch(() => {});
     }
@@ -794,7 +833,7 @@
     }
 
     function startHubWorker(ids) {
-      if (hubRunning || busy || !settings.showPrices || solverOnline === false) return;
+      if (hubRunning || busy || !settings.priceTiles || solverOnline === false) return;
       hubRunning = true;
       hubStop = false;
       runHubWorker(ids).finally(() => {
@@ -864,9 +903,15 @@
       refreshButtons();
     }
 
-    async function applyPrices(enabled) {
+    async function applyPrices() {
+      const args = {
+        cards: settings.showCardPrices,
+        squadValue: settings.showSquadValue,
+        packs: settings.showPackValue,
+        tiles: settings.priceTiles
+      };
       try {
-        await request("setPriceOverlay", { args: { enabled }, timeoutMs: 5000 });
+        await request("setPriceOverlay", { args, timeoutMs: 5000 });
         pricesApplied = true;
       } catch {
         pricesApplied = false; // page not ready yet; the context poll retries

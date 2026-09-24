@@ -1236,18 +1236,36 @@
     return activeControllers().some((n) => /SBCHub/.test(n.className || ctorName(n) || ""));
   }
 
-  // Tile title elements: text nodes whose whole text is a set name.
+  const normName = (t) => String(t ?? "").replace(/[\s ]+/g, " ").trim().toLowerCase();
+
+  // Tile title elements: text nodes whose whole text is a set name (spacing/case ignored). Also
+  // looks inside open shadow roots: another extension may redraw the SBC page in its own tree.
   function hubTileTitles() {
-    const byName = new Map(repoSets().map((st) => [st.name.trim(), st]));
+    const byName = new Map(repoSets().map((st) => [normName(st.name), st]));
     const out = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      const set = byName.get((n.nodeValue || "").trim());
-      const el = n.parentElement;
-      if (!set || !el || el.closest("#sbcs, #sbcs-modal, .sbcs-tile")) continue;
-      out.push({ set, el });
-    }
+    if (!byName.size) return out;
+    const scan = (root, depth) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (n.nodeType === 1) {
+          if (n.shadowRoot && depth < 3) scan(n.shadowRoot, depth + 1);
+          continue;
+        }
+        const set = byName.get(normName(n.nodeValue));
+        const el = n.parentElement;
+        if (!set || !el || el.closest("#sbcs, #sbcs-modal, .sbcs-tile")) continue;
+        out.push({ set, el });
+      }
+    };
+    scan(document.body, 0);
     return out;
+  }
+
+  // Tiles couldn't be found on this page: price the unfinished sets the app knows instead
+  // (listed in the panel). Capped so a huge hub doesn't mean dozens of requests.
+  const HUB_FALLBACK_MAX = 24;
+  function hubFallbackSets() {
+    return repoSets().filter((st) => callIfFn(st, "isComplete") !== true && st.hidden !== true).slice(0, HUB_FALLBACK_MAX);
   }
 
   function ensureTileStyle() {
@@ -1267,7 +1285,7 @@
     for (const { set, el } of titles) {
       const v = tileValues.get(set.id);
       let badge = el.parentElement?.querySelector(`:scope > .sbcs-tile[data-set="${set.id}"]`);
-      if (!v || !overlayOn) {
+      if (!v || !show.tiles) {
         badge?.remove();
         continue;
       }
@@ -1275,6 +1293,11 @@
         badge = document.createElement("span");
         badge.dataset.set = String(set.id);
         el.after(badge);
+        // Page styles don't reach into a shadow root: give it its own copy.
+        const shadow = el.getRootNode();
+        if (typeof ShadowRoot !== "undefined" && shadow instanceof ShadowRoot && !shadow.getElementById?.("sbcs-tile-style")) {
+          shadow.appendChild(document.getElementById("sbcs-tile-style").cloneNode(true));
+        }
       }
       badge.className = `sbcs-tile ${v.tone || ""}`;
       badge.textContent = v.text;
@@ -1450,14 +1473,25 @@
   // ---------- context (polled by the panel) ----------
 
   function context() {
-    if (overlayOn && installSquadValue()) renderSquadValue(); // fallback refresh
+    if (show.squadValue && installSquadValue()) renderSquadValue(); // fallback refresh
     const formations = Object.fromEntries(learnedFormations);
     if (onHubScreen()) {
       document.querySelectorAll(".sbcs-side").forEach((b) => b.remove());
       const titles = hubTileTitles();
       renderTileBadges(titles);
-      const ids = [...new Set(titles.filter(({ set }) => callIfFn(set, "isComplete") !== true).map(({ set }) => set.id))];
-      return { onSbc: false, onHub: true, hubSets: ids, formations, slotsVersion };
+      let ids = [...new Set(titles.filter(({ set }) => callIfFn(set, "isComplete") !== true).map(({ set }) => set.id))];
+      const known = repoSets();
+      const tilesFound = titles.length > 0;
+      const names = {};
+      if (!tilesFound) {
+        const sets = hubFallbackSets();
+        ids = sets.map((st) => st.id);
+        sets.forEach((st) => (names[st.id] = st.name));
+      }
+      return {
+        onSbc: false, onHub: true, hubSets: ids, formations, slotsVersion,
+        hubTilesFound: titles.length, hubSetsKnown: known.length, hubNames: names
+      };
     }
     const ch = currentChallenge();
     if (!ch) {
@@ -1507,7 +1541,9 @@
 
   // ---------- price overlay on player cards ----------
 
-  let overlayOn = false;
+  // What the page draws (each its own setting in the panel).
+  const show = { cards: false, squadValue: false, packs: false, tiles: false };
+  let overlayOn = false; // card badges (kept name: used throughout the card code)
   let overlayPatched = false;
 
   function formatCoins(v) {
@@ -1970,7 +2006,7 @@
     const root = view?.__root;
     if (!root || !root.isConnected) return;
     root.querySelectorAll(":scope > .sbcs-pack").forEach((n) => n.remove());
-    if (!overlayOn) return;
+    if (!show.packs) return;
     const sum = packSummary(items);
     if (!sum.count) return;
     const price = packPrice(root);
@@ -2066,7 +2102,7 @@
     const root = statsView?.__root;
     let box = document.getElementById("sbcs-value");
     const challenge = currentChallenge();
-    if (!overlayOn || !root || !root.isConnected || !challenge) {
+    if (!show.squadValue || !root || !root.isConnected || !challenge) {
       box?.remove();
       return;
     }
@@ -2140,8 +2176,13 @@
     return true;
   }
 
+  // args: { cards, squadValue, packs, tiles } (or { enabled } for all four).
   function setPriceOverlay(progress, args) {
-    overlayOn = !!args?.enabled;
+    const all = typeof args?.enabled === "boolean" ? args.enabled : null;
+    for (const k of Object.keys(show)) show[k] = all ?? !!args?.[k];
+    overlayOn = show.cards;
+    if (!show.packs) document.querySelectorAll(".sbcs-pack").forEach((n) => n.remove());
+    if (!show.tiles) document.querySelectorAll(".sbcs-tile").forEach((n) => n.remove());
     installSquadValue();
     installPackSummary();
     scheduleSquadValue();
@@ -2158,7 +2199,7 @@
       ensureOverlayStyle();
     }
     if (!overlayOn) document.querySelectorAll(".sbcs-badges").forEach((n) => n.remove());
-    return { enabled: overlayOn };
+    return { ...show };
   }
 
   // ---------- bridge ----------

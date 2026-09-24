@@ -28,7 +28,7 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 - **Whole sets / solve multiple times:** a preview lists every squad (no player used twice) before anything is placed. Toggle off any you don't want, then press **Complete** (the default) to fill and submit each remaining squad back to back, or **Fill only** to place them and submit yourself. If your club can't cover all of them, you get the ones that are possible. Submitting can't be undone; it stops at the first squad the app doesn't accept.
 - **Price badges on cards:** coin value (EA market average), green `$` = tradeable, grey 🚫 = untradeable, blue = from SBC storage. Values with `~` and a dashed border are estimates (EA has no price for that card): the median EA price of your own cards with the same rating.
 - **Squad value** in the SBC header, and a value summary on store pack previews.
-- ⚙ in the panel: price badges on/off, time limit, max player value. Click the panel header to collapse it.
+- ⚙ in the panel: turn each display on or off (card price badges, squad value, pack value, SBC values on the SBC page), plus max player value (0 = no limit) and time limit. Click the panel header to collapse it.
 
 ## How it works
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FC 27 SBC Solver",
-  "version": "0.9.7",
+  "version": "0.9.9",
   "description": "FC 27 SBC solver: solves inside the browser (HiGHS WebAssembly) fills SBC squads, and submits them only when you press Complete.",
   "permissions": [
     "storage"
