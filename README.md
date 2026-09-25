@@ -1,5 +1,7 @@
 # FC 27 SBC Solver
 
+<img width="1672" height="940" alt="SBC_solver" src="https://github.com/user-attachments/assets/6bd526e5-eaba-4926-8f0e-9e024039fd12" />
+
 Chrome extension for the EA SPORTS FC 27 Ultimate Team Web App. It finds the cheapest squad from your own club for a Squad Building Challenge and places it on the pitch. For repeated SBCs and whole sets it can also submit every squad for you, back to back.
 
 Everything runs inside your browser: no server, no account, nothing to install beyond loading the extension.
