@@ -171,3 +171,28 @@ Star rating: `getStarRating()` compares the rating with `STAR_RATING_THRESHOLDS`
 `item.getMarketAverage()` (backed by `_marketAverage`) returns EA's own market-average price, e.g. 46950 for Szoboszlai. This can back the default PriceProvider with no third-party scraping. -1 means no data, which is typical for untradeables and non-players.
 
 ## Placing players (Phase 3) — not researched yet
+
+## FUT Gallery score — CONFIRMED (Web App update, Sept 2026)
+
+From a club dump and the Gallery probe (2026-09-29):
+
+- **Per card:** item fields `sbsScore` and `gradingScore` (always equal in the dump). Base gold by rating: 82 → 340, 83 → 410, 84 → 830, 85 → 2,100, 86 → 4,100, 87 → 5,500, 89 → 11,000. Special cards get a multiplier (seen ×1.25 and ×1.5; some specials ×1). Items also have `isCollected` (meaning not confirmed yet).
+- **Per challenge:** `scoreRequirement` and `submittedScore`; the app's progress is `min(submittedScore / scoreRequirement, 1)` (0 when there's no requirement).
+- **Per set:** `scoreRequirement` and `totalSubmittedScore`, same progress formula.
+- **Picking cards:** a "One Click SBC" work area sums the `sbsScore` of the selected items.
+- **New `SBCEligibilityKey` values:** 40 `ACADEMY_PLAYER_SLOTTING`, 41 `PLAYER_ATTRIBUTE`, 42 `ADDITIONAL_TARGET_VALUE`. None appear in a dumped SBC yet; the solver reports them as unsupported.
+
+### One Click (gallery-score) SBCs — CONFIRMED from a dump of "Renato Veiga" (2026-09-29)
+
+- Challenge `type: "ONE_CLICK_CHALLENGE"`, `formation: ""`, target in `scoreRequirement` (25,000), progress in `submittedScore`. Its set has `isOneClickSBC()`, `scoreRequirement`, `totalSubmittedScore`. Requirements are normal eligibility DTOs (e.g. OVR Min. 45).
+- Screen: `UTOneClickSBCWorkAreaSplitViewController` → `leftController` (`UTOneClickSBCWorkAreaViewController`, grid) and `rightController` (`UTOneClickSBCRequirementsViewController`, requirements + Review Selection).
+- The grid's `viewModel` (`UTOneClickSBCWorkAreaViewModel`) holds `_challenge`, `_set`, `_selectedItemIds`, `_itemScoreMap` (item id → score), `_itemEntityMap`, tabs `club` / `storage` / `favourite`, 30 items per page. Methods include `selectItem`, `deselectItem`, `toggleSelection`, `clearSelection`, `getSelectedItemIds`, `getSelectedScore`, `getSelectionLimit`, `isItemSelectable`, `nextPage`, `setActiveTab`.
+- Submitting goes through a Review screen (`onReviewSelection` → `_openReviewScreen`).
+
+CONFIRMED from the method-source dumps (2026-09-29):
+
+- `selectItem(item)` adds `item.id` to `_selectedItemIds` (returns false at the limit); the limit (`getSelectionLimit`) is the page size, 30. `isItemSelectable(item)` is `sbsScore > 0`.
+- `getSelectedScore` sums `_itemScoreMap`, which only has cards the grid has fetched. `_ensureItemsForPage(page, cb)` fetches batches (club search with `sbcChallengeId` and the tab's pile, so the server applies the SBC's filters) until that page exists or everything is retrieved; it fills `_itemEntityMap` / `_itemTabMap` / `_itemScoreMap`.
+- After selecting, the work-area controller's `_refreshSelectionControls()` updates the counts and the progress bar; the view's `setItemSelected(item, true)` ticks a visible tile.
+- Review Selection pushes `UTOneClickSBCReviewViewController` (or a squad-conflict popup first when selected cards are in squads). Submission: `services.SBC.submitOneClickChallenge(challenge, set, itemIds)`; response data has `challengeCompleted`, `setCompleted`, `submittedScore`, awards; HTTP 409 with `squads` = squad conflict (nothing submitted). `initiateOneClickChallenge(challenge)` starts a not-started one.
+- Requirement "OVR Max: 83" is one DTO with `{40: [83], 41: [1]}`, scope max: key 41 names the attribute (1 = OVR), key 40 holds the value.

@@ -10,8 +10,10 @@
     allowTradeable: true, allowSpecial: false, ignoreExclusions: false, storageFirst: false,
     raresOnlyIfRequired: true, useUnassigned: true, useTransferDuplicates: true, keepSquadPlayers: false,
     solveMultiple: false, solveTimes: 2, ratingMin: 45, ratingMax: 99, specialRatingMin: 45, specialRatingMax: 99,
-    solveUsing: "price", scope: "challenge", excludeActiveSquad: true
+    solveUsing: "price", scope: "challenge", excludeActiveSquad: true, pointsPreference: "lowToHigh"
   };
+  // Options shown for gallery-score ("One Click") SBCs.
+  const POINTS_TOGGLES = new Set(["useConcept", "allowTradeable", "allowSpecial", "excludeActiveSquad", "ignoreExclusions", "storageFirst"]);
   const MAX_SOLVE_TIMES = 10;
   // Display toggles: each price feature on its own.
   const DISPLAY_KEYS = ["showCardPrices", "showSquadValue", "showPackValue", "priceTiles"];
@@ -196,6 +198,7 @@
   #sbcs-modal .row{display:grid;grid-template-columns:26px 34px minmax(120px,1fr) 26px 26px 26px 22px 22px 80px;
     align-items:center;gap:8px;padding:5px 12px;border-top:1px solid #ffffff0d}
   #sbcs-modal .row:nth-child(odd){background:#ffffff05}
+  #sbcs-modal .gal{color:#8ce6d6;font-weight:700;margin-left:8px;font-size:12px}
   #sbcs-modal .ovr{font-weight:700;text-align:center}
   #sbcs-modal .nm2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
   #sbcs-modal img{width:22px;height:22px;object-fit:contain}
@@ -279,8 +282,10 @@
     const store = p.storage ? svg(STORAGE_SVG, "From SBC storage") : el("span");
     const price = el("div", "price");
     price.append(document.createTextNode(p.price ? fmt(p.price) : "–"), el("span", "coin"));
+    const nameCell = el("div", "nm2", p.name || "?");
+    if (p.galleryScore) nameCell.append(el("span", "gal", `◆ ${fmt(p.galleryScore)}`));
     row.append(
-      chip, el("div", "ovr", String(p.rating ?? "")), el("div", "nm2", p.name || "?"),
+      chip, el("div", "ovr", String(p.rating ?? "")), nameCell,
       imgOrBlank(p.img?.league, "League"), imgOrBlank(p.img?.club, "Club"), imgOrBlank(p.img?.nation, "Nation"),
       tradeIcon, store, price
     );
@@ -332,7 +337,7 @@
   // sections: [{ id, name, players: [details] }]. Resolves with { ids, submit } for the squads left
   // toggled on ("Complete" = fill and submit, the default; "Fill only" = place them), or null if
   // cancelled.
-  function showPreview({ title, subtitle, notes, sections, confirmLabel = "Complete", fillLabel = "Fill only" }) {
+  function showPreview({ title, subtitle, notes, sections, confirmLabel = "Complete", fillLabel = "Fill only", actions = true, showCount = true }) {
     return new Promise((resolve) => {
       if (!document.getElementById("sbcs-modal-style")) {
         const st = el("style");
@@ -364,7 +369,7 @@
         const tradable = players.filter((p) => p.tradable).length;
         sum.textContent = `${chosen.length} squad${chosen.length === 1 ? "" : "s"} · ${players.length} players · value ${fmt(value)}`
           + (tradable ? ` · ${tradable} tradeable` : " · no tradeable cards");
-        go.textContent = `${confirmLabel} (${chosen.length})`;
+        go.textContent = showCount ? `${confirmLabel} (${chosen.length})` : confirmLabel;
         go.title = `Fill and submit ${chosen.length === 1 ? "this squad" : `these ${chosen.length} squads`}. Submitting can't be undone.`;
         go.disabled = !chosen.length;
         fillOnly.disabled = !chosen.length;
@@ -407,12 +412,16 @@
       go.addEventListener("click", () => close({ ids: picked(), submit: true }));
       fillOnly.addEventListener("click", () => close({ ids: picked(), submit: false }));
       document.addEventListener("keydown", onKey, true);
-      foot.append(sum, cancel, fillOnly, go);
+      if (actions) foot.append(sum, cancel, fillOnly, go);
+      else {
+        cancel.textContent = "Close";
+        foot.append(sum, cancel);
+      }
       dlg.append(scroll, foot);
       overlay.append(dlg);
       document.body.append(overlay);
       refresh();
-      go.focus();
+      (actions ? go : cancel).focus();
     });
   }
 
@@ -468,7 +477,7 @@
 
     // Normally the "Auto Complete" button sits in the app's own SBC sidebar; these show only if
     // that injection fails (e.g. after an EA update).
-    const fillOne = button("Auto Complete", "btn primary", () => openAutoOptions("challenge"));
+    const fillOne = button("Auto Complete", "btn primary", () => openAutoOptions(ctx.onPoints ? "points" : "challenge"));
     const fillSet = button("Auto Complete Set", "btn", () => openAutoOptions("set"));
     const btns = el("div", "btns");
     btns.append(fillOne, fillSet);
@@ -596,8 +605,10 @@
           try {
             const data = await request(cmd, { onProgress: showBusy });
             const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-            download(`${prefix}-${stamp}.json`, data);
-            showDone(`Saved ${prefix}-${stamp}.json`);
+            // One-click (gallery) SBC recon carries EA method sources: its own name, kept out of git.
+            const name = `${data?.kind === "sbc-oneclick" ? "sbc-oneclick" : prefix}-${stamp}.json`;
+            download(name, data);
+            showDone(`Saved ${name}`);
           } catch (e) {
             showDone(`${label} failed: ${e.message}`, "bad");
           }
@@ -624,7 +635,7 @@
       // From a challenge's squad screen (sets with 2+ challenges) or from a set's overview page.
       const setOpen = (ctx.onSbc && (ctx.setChallenges ?? 0) > 1) || ctx.onSet;
       const left = setOpen ? (ctx.setChallenges ?? 0) - (ctx.setCompleted ?? 0) : 0;
-      fillOne.hidden = !ctx.onSbc || !!ctx.sidebarButton;
+      fillOne.hidden = !(ctx.onSbc || ctx.onPoints) || !!ctx.sidebarButton;
       fillOne.disabled = busy || solverOnline === false;
       fillSet.hidden = !ctx.onSet || !!ctx.sidebarButton;
       fillSet.className = "btn primary";
@@ -695,7 +706,10 @@
       rememberFormations(ctx.formations);
       rememberSlots(ctx.slotsVersion);
       if (!ctx.onHub) renderHubList([], {});
-      if (ctx.onSbc) {
+      if (ctx.onPoints) {
+        ctxName.textContent = ctx.challengeName;
+        ctxSub.textContent = `Gallery SBC · ${fmt(ctx.pointsSubmitted)} of ${fmt(ctx.pointsRequired)} points submitted · ${fmt(ctx.pointsSelected)} selected`;
+      } else if (ctx.onSbc) {
         ctxName.textContent = ctx.challengeName;
         ctxSub.textContent = ctx.setName && ctx.setChallenges > 1
           ? `Set: ${ctx.setName} · ${ctx.setCompleted ?? 0}/${ctx.setChallenges} done`
@@ -937,6 +951,7 @@
         specialRatingMax: a.specialRatingMax,
         solveUsing: a.solveUsing,
         excludeActiveSquad: a.excludeActiveSquad,
+        preference: a.pointsPreference,
         ...extra
       };
     }
@@ -1025,6 +1040,63 @@
       }
     }
 
+    // ---------- gallery-score SBCs ----------
+    async function runPoints() {
+      if (busy) return;
+      setBusy(true);
+      result.replaceChildren();
+      await pauseHubWorker();
+      try {
+        showBusy("Reading your club…");
+        const input = await request("pointsInput", { onProgress: showBusy });
+        if (!input.required) return showDone("This SBC's points target is already reached.", "ok");
+        showBusy(`Finding the cheapest cards for ${fmt(input.required)} points…`);
+        const res = await toBackground({
+          type: "solvePoints",
+          payload: {
+            club: input.club,
+            required: input.required,
+            requirements: input.requirements,
+            options: solverOptions({ timeLimitS: settings.timeLimitS, maxCards: input.selectionLimit })
+          }
+        });
+        if (!res.players.length) return showNoSolution(res.status, res.unsupported);
+        const details = await request("describePlayers", { args: { ids: res.players.map((p) => p.playerId) }, timeoutMs: 5000 });
+        showBusy("Waiting for you to confirm…");
+        const choice = await showPreview({
+          title: `${input.name}: ${res.players.length} cards`,
+          subtitle: `${fmt(res.score)} of ${fmt(input.required)} points · solved in ${res.stats?.wallTimeS ?? "?"}s · Complete selects and submits these cards; Fill only ticks them on the grid`,
+          notes: [],
+          sections: [{
+            id: "points",
+            name: `Selection · ${fmt(res.score)} points`,
+            players: res.players.map((p) => ({
+              name: p.name, rating: p.rating, price: p.marketPrice, tradable: p.tradable, galleryScore: p.galleryScore,
+              storage: p.inStorage, ...(details[p.playerId] || {})
+            }))
+          }],
+          confirmLabel: `Submit ${res.players.length} cards`,
+          fillLabel: "Select on grid",
+          showCount: false
+        });
+        if (!choice || !choice.ids.length) return showDone("Cancelled. Nothing was changed.");
+        const itemIds = res.players.map((p) => p.playerId);
+        if (choice.submit) {
+          const done = await request("completePoints", { onProgress: showBusy, args: { challengeId: input.challengeId, itemIds } });
+          clubChanged();
+          showDone(`Submitted ${done.submitted} cards for ${fmt(done.score)} points${done.challengeCompleted ? ": challenge complete. Rewards are in your Unassigned items / My Packs." : "."}`, "ok");
+        } else {
+          const sel = await request("selectPoints", { onProgress: showBusy, args: { challengeId: input.challengeId, itemIds } });
+          showDone(`Selected ${sel.selected} cards (${fmt(sel.score)} points) on the grid. Press Review Selection to submit.`, "ok");
+        }
+      } catch (e) {
+        showDone(e.message, "bad");
+      } finally {
+        setBusy(false);
+        pollContext();
+      }
+    }
+
     // Result of "Complete": how many were submitted, and why it stopped early (if it did).
     function showCompleted(done, name) {
       const { submitted, total, error } = done;
@@ -1077,6 +1149,7 @@
       const left = (ctx.setChallenges ?? 0) - (ctx.setCompleted ?? 0);
       const body = el("div", "opts");
       const save = () => saveSettings(settings);
+      let afterToggle = () => {}; // set below once the "solve multiple times" controls exist
       const toggleRow = (key, label, tip, disabled = false) => {
         const row = el("label", `orow${disabled ? " dis" : ""}`);
         row.title = tip;
@@ -1088,7 +1161,7 @@
         cb.addEventListener("change", () => {
           a[key] = cb.checked;
           save();
-          refreshMultiple();
+          afterToggle();
         });
         sw.append(cb, el("span"));
         row.append(el("span", "", label), sw);
@@ -1118,6 +1191,45 @@
         box.append(line);
         return box;
       };
+
+      if (scope === "points") {
+        // Gallery-score SBC: only the options that apply to picking cards by points.
+        const need = Math.max(0, (ctx.pointsRequired ?? 0) - (ctx.pointsSubmitted ?? 0));
+        body.append(el("div", "olabel", `${fmt(ctx.pointsSubmitted ?? 0)} of ${fmt(ctx.pointsRequired ?? 0)} points submitted. ${fmt(need)} to go.`));
+        for (const [key, label, tip] of AUTO_TOGGLES) {
+          if (POINTS_TOGGLES.has(key)) body.append(toggleRow(key, label, tip, key === "useConcept"));
+        }
+        body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
+        const selectRow = (label, key, choices) => {
+          const box = el("div", "orange");
+          box.append(el("div", "olabel", label));
+          const sel = el("select");
+          for (const [v, t] of choices) {
+            const o = el("option", "", t);
+            o.value = v;
+            sel.append(o);
+          }
+          sel.value = a[key];
+          sel.addEventListener("change", () => {
+            a[key] = sel.value;
+            save();
+          });
+          box.append(sel);
+          return box;
+        };
+        body.append(
+          selectRow("Solve using", "solveUsing", [["price", "Price (cheapest cards)"], ["rating", "Rating (lowest-rated cards)"]]),
+          selectRow("Preference", "pointsPreference", [["lowToHigh", "Low to high (more, cheaper cards)"], ["highToLow", "High to low (fewest cards)"]])
+        );
+        openDialog({
+          title: ctx.challengeName || "Gallery SBC",
+          subtitle: "Pick cards whose gallery points reach the target.",
+          body,
+          confirmLabel: "Generate solution",
+          onConfirm: () => runPoints()
+        });
+        return;
+      }
 
       if (scope === "challenge" && savedSquads[id]?.length) {
         const saved = el("div", "saved");
@@ -1163,6 +1275,7 @@
         times.disabled = !multiAllowed || !a.solveMultiple;
       }
       refreshMultiple();
+      afterToggle = refreshMultiple;
 
       body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
 
@@ -1217,7 +1330,7 @@
     }
 
     onPageEvent = (msg) => {
-      if (msg.type === "autoComplete") openAutoOptions(msg.scope === "set" ? "set" : "challenge");
+      if (msg.type === "autoComplete") openAutoOptions(["set", "points"].includes(msg.scope) ? msg.scope : "challenge");
     };
 
     // ---------- fill this SBC ----------

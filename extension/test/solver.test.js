@@ -271,3 +271,32 @@ test("max player value 0 or empty means no limit", () => {
   const ch = challenge([req(K.TEAM_RATING, GREATER, [80])]);
   assertValid(solve(ch, players, { maxCost: 0 }), ch);
 });
+
+test("gallery points SBC: cheapest cards reaching the score target", () => {
+  const club = S.clubFromDump(fixture("club-2026-09-29T00-09-24-043Z.json"));
+  const req = [{ firstKey: K.PLAYER_MIN_OVR, firstValue: [45], scope: GREATER, count: -1 }];
+  const r = S.handleSolvePoints(highs, { club: fixture("club-2026-09-29T00-09-24-043Z.json"), required: 25000, requirements: req, options: { excludeActiveSquad: false } });
+  assert.equal(r.status, "optimal", JSON.stringify(r).slice(0, 300));
+  assert.ok(r.score >= 25000, `score ${r.score}`);
+  assert.equal(new Set(r.players.map((p) => p.playerId)).size, r.players.length);
+  // No cheaper subset: brute-force check that dropping any chosen card breaks the target.
+  for (const p of r.players) assert.ok(r.score - p.galleryScore < 25000 || p.cost === 0, `${p.name} is unnecessary`);
+  const few = S.handleSolvePoints(highs, { club: fixture("club-2026-09-29T00-09-24-043Z.json"), required: 25000, requirements: req, options: { excludeActiveSquad: false, preference: "highToLow" } });
+  assert.ok(few.players.length <= r.players.length);
+  assert.ok(club.players.length > 0);
+  // Defaults exclude the active squad: the rest of this club can't reach 25,000.
+  assert.equal(S.handleSolvePoints(highs, { club: fixture("club-2026-09-29T00-09-24-043Z.json"), required: 25000, requirements: req, options: {} }).status, "infeasible");
+  const tooMuch = S.handleSolvePoints(highs, { club: fixture("club-2026-09-29T00-09-24-043Z.json"), required: 10 ** 9, requirements: req, options: {} });
+  assert.equal(tooMuch.status, "infeasible");
+});
+
+test("attribute requirement: 'OVR Max: 83' = {40: [83], 41: [1]}; other attributes stay unsupported", () => {
+  const club = fixture("club-2026-09-29T00-09-24-043Z.json");
+  const dto = (text, scope, value, attribute) => ({ text, scope, count: -1, raw: { kvPairs: { __collection: { 40: [value], 41: [attribute] } } } });
+  const r = S.handleSolvePoints(highs, { club, required: 1250, requirements: [dto("OVR Max: 83", LOWER, 83, 1)], options: {} });
+  assert.equal(r.status, "optimal");
+  assert.ok(r.score >= 1250);
+  assert.ok(r.players.every((p) => p.rating <= 83));
+  assert.equal(S.handleSolvePoints(highs, { club, required: 1250, requirements: [dto("Pace Min: 80", GREATER, 80, 2)], options: {} }).status, "unsupported");
+  assert.equal(S.handleSolvePoints(highs, { club, required: 1250, requirements: [dto("Pace Min: 80", GREATER, 80, 1)], options: {} }).status, "unsupported");
+});

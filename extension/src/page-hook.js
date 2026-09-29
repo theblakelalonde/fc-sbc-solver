@@ -610,7 +610,13 @@
         name: challenge.name,
         setId: challenge.setId,
         formation: challenge.formation,
-        eligibilityOperation: challenge.eligibilityOperation
+        eligibilityOperation: challenge.eligibilityOperation,
+        type: challenge.type,
+        // Gallery-score SBCs (Sept 2026): submitted cards' sbsScore adds up to scoreRequirement.
+        scoreRequirement: challenge.scoreRequirement,
+        submittedScore: challenge.submittedScore,
+        setScoreRequirement: currentSet(challenge)?.scoreRequirement,
+        setSubmittedScore: currentSet(challenge)?.totalSubmittedScore
       },
       ratingFloatMode: ratingFloatMode(),
       requirements: reqs.map((r) => serializeRequirement(r, keyNames, scopeNames)),
@@ -620,9 +626,83 @@
     };
   }
 
+  // Recon for screens without a squad (the "One Click SBC" work area of gallery-score SBCs):
+  // walks the visible controllers a few levels deep for challenge/set entities and one-click
+  // view models, and records their fields and method names. Read-only.
+  function oneClickRecon() {
+    const controllers = findControllers();
+    const looksLikeChallenge = (o) => Array.isArray(o?.eligibilityRequirements) && o.id !== undefined;
+    const looksOneClick = (o) => /OneClick|WorkArea/i.test(ctorName(o) || "") || "_itemScoreMap" in o || "_selectedItemIds" in o;
+    const found = [];
+    const objects = []; // same order as found
+    const seen = new WeakSet();
+    const walk = (o, path, depth) => {
+      if (!isObj(o) || seen.has(o) || depth > 3) return;
+      if (typeof Node !== "undefined" && o instanceof Node) return;
+      seen.add(o);
+      const kind = looksLikeChallenge(o) ? "challenge" : isSetEntity(o) ? "set" : looksOneClick(o) ? "oneClick" : null;
+      if (kind) {
+        objects.push(o);
+        found.push({ kind, path, type: ctorName(o), raw: snapshot(o, kind === "oneClick" ? 2 : 1), protoMethods: protoMethods(o) });
+        if (kind !== "oneClick") return;
+      }
+      if (o instanceof Map || Array.isArray(o)) return;
+      for (const key of Object.keys(o)) {
+        if (key.startsWith("__")) continue;
+        let v;
+        try {
+          v = o[key];
+        } catch {
+          continue;
+        }
+        walk(v, `${path}.${key}`, depth + 1);
+      }
+    };
+    for (const { node, path } of controllers) walk(node, path, 0);
+    // How selection, paging and review work: the source of those few methods (stays local).
+    const SOURCE_OF = /^(selectItem|deselectItem|toggleSelection|clearSelection|isItemSelectable|getSelectionLimit|isSelectionLimitReached|getSelectedItemIds|getSelectedScore|_recalculateSelectedScore|loadInitialPage|nextPage|setActiveTab|_ensureItemsForPage|_fetchBatch|_emitCurrentPage|_tabPileSearchType|_buildCriteria|_eItemSelected|_eAutoSelect|autoSelectCurrentPage|_eReviewTap|_openReviewScreen|_pushReviewScreen|onReviewSelection|_refreshSelectionControls|_updateProgressBar|isOneClickSBC|initWithSBCSet)$|submit|Submit/;
+    const sources = [];
+    const seenSrc = new Set();
+    for (const [i, f] of found.entries()) {
+      if (f.kind !== "oneClick") continue;
+      const obj = objects[i];
+      for (const name of f.protoMethods) {
+        if (!SOURCE_OF.test(name) || seenSrc.has(`${f.type}.${name}`)) continue;
+        seenSrc.add(`${f.type}.${name}`);
+        try {
+          sources.push({ owner: f.type, name, source: String(obj[name]).slice(0, 4000) });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    const sbc = g("services")?.SBC;
+    if (isObj(sbc)) {
+      for (const name of protoMethods(sbc).filter((m) => /submit|oneClick|OneClick/i.test(m))) {
+        try {
+          sources.push({ owner: "services.SBC", name, source: String(sbc[name]).slice(0, 4000) });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    return {
+      kind: "sbc-oneclick",
+      sources,
+      capturedAt: new Date().toISOString(),
+      enums: { SBCEligibilityKey: g("SBCEligibilityKey") ?? null, SBCEligibilityScope: g("SBCEligibilityScope") ?? null },
+      controllers: controllers.map(({ path, className, node }) => ({ path, className, keys: Object.keys(node).filter((k) => !k.startsWith("__")), protoMethods: protoMethods(node) })),
+      found
+    };
+  }
+
   function dumpSbc(opts = {}) {
     const lite = typeof opts === "object" && !!opts.lite;
     const hits = findControllers().filter(({ node }) => isObj(node._challenge) || isObj(node.challenge));
+    if (!hits.length && !lite) {
+      const recon = oneClickRecon();
+      if (recon.found.length) return recon;
+    }
     if (!hits.length) throw new Error("No controller with a challenge found. Open an SBC challenge (the squad screen) and retry.");
     const { node, path, className } = hits[0];
     const challenge = node._challenge || node.challenge;
@@ -1412,7 +1492,9 @@
     for (const node of activeControllers()) {
       const cls = node.className || ctorName(node) || "";
       const ch = isObj(node._challenge) ? node._challenge : isObj(node.challenge) ? node.challenge : null;
-      const fits = scope === "challenge" ? ch && !/Overview/.test(cls) : /SBC/.test(cls) && !/Hub|Overview/.test(cls);
+      const fits = scope === "points" ? /OneClickSBCRequirements/.test(cls)
+        : scope === "challenge" ? ch && !/Overview/.test(cls)
+          : /SBC/.test(cls) && !/Hub|Overview|OneClick/.test(cls);
       if (!fits) continue;
       const root = callIfFn(node, "getView")?.__root;
       if (!root || !root.isConnected || !root.querySelector("button")) continue;
@@ -1472,9 +1554,160 @@
 
   // ---------- context (polled by the panel) ----------
 
+  // ---------- gallery-score ("One Click") SBCs ----------
+  // Their screen has no squad: a grid of cards whose gallery scores add up to scoreRequirement.
+  // The work area's view model holds the challenge, the set and the current selection.
+
+  function oneClickScreen() {
+    for (const node of activeControllers()) {
+      const vm = node.viewModel;
+      if (isObj(vm) && typeof vm.getSelectedScore === "function" && isObj(vm._challenge)) {
+        return { controller: node, vm, challenge: vm._challenge, set: isObj(vm._set) ? vm._set : currentSet(vm._challenge) };
+      }
+    }
+    return null;
+  }
+
+  function pointsNeeded(challenge) {
+    return Math.max(0, (Number(challenge.scoreRequirement) || 0) - (Number(challenge.submittedScore) || 0));
+  }
+
+  const ONE_CLICK_TABS = () => {
+    const T = g("OneClickSBCWorkAreaTab") || {};
+    return [T.CLUB ?? "club", T.STORAGE ?? "storage"];
+  };
+
+  // Has the grid's own view model load every eligible card of the Club and Storage tabs (its
+  // search already applies the SBC's filters, e.g. OVR Max. 83). Same loader the grid uses when
+  // you page through; the visible tab and page don't change.
+  async function loadAllOneClickItems(vm, progress) {
+    if (typeof vm._ensureItemsForPage !== "function" || !(vm._tabStates instanceof Map)) {
+      throw new Error("The card grid changed (EA update?): can't load its cards.");
+    }
+    const original = vm._activeTab;
+    try {
+      for (const tab of ONE_CLICK_TABS()) {
+        progress(`Loading your ${tab} cards…`);
+        vm._activeTab = tab;
+        if (!vm._tabStates.has(tab)) vm._tabStates.set(tab, vm._createTabState());
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(`loading the ${tab} tab timed out`)), 30000);
+          vm._ensureItemsForPage(999, () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        });
+      }
+    } finally {
+      vm._activeTab = original;
+    }
+    const byTab = { club: [], storage: [] };
+    const [clubTab, storageTab] = ONE_CLICK_TABS();
+    for (const [id, item] of vm._itemEntityMap) {
+      const tab = vm._itemTabMap.get(id);
+      if (callIfFn(vm, "isItemSelectable", item) === false) continue;
+      if (tab === clubTab) byTab.club.push(item);
+      else if (tab === storageTab) byTab.storage.push(item);
+    }
+    return byTab;
+  }
+
+  // Solver input for a gallery-score SBC: the cards the grid offers, plus what's still needed.
+  async function pointsInput(progress) {
+    const screen = oneClickScreen();
+    if (!screen) throw new Error("Open the gallery SBC's card grid first.");
+    const { challenge, vm } = screen;
+    const keyNames = enumNameMap(g("SBCEligibilityKey"));
+    const scopeNames = enumNameMap(g("SBCEligibilityScope"));
+    const reqs = Array.isArray(challenge.eligibilityRequirements) ? challenge.eligibilityRequirements : [];
+    const offered = await loadAllOneClickItems(vm, progress);
+    // Club links / active squad / prices come from the usual club read; the card pool is the grid's.
+    const club = await dumpClub(progress, { lite: true });
+    club.players = offered.club.map((it) => serializeItem(it, false));
+    club.storage = offered.storage.map((it) => serializeItem(it, false));
+    club.unassigned = [];
+    club.transferDuplicates = [];
+    return {
+      challengeId: challenge.id,
+      name: challenge.name,
+      required: pointsNeeded(challenge),
+      requirements: reqs.map((r) => serializeRequirement(r, keyNames, scopeNames)),
+      selectionLimit: callIfFn(vm, "getSelectionLimit"),
+      club
+    };
+  }
+
+  // Ticks the chosen cards on the grid (the same calls a tap makes) and checks the score.
+  function selectOneClick(screen, itemIds) {
+    const { vm, controller, challenge } = screen;
+    const view = callIfFn(controller, "getView");
+    callIfFn(vm, "clearSelection");
+    callIfFn(view, "clearSelection");
+    for (const id of itemIds) {
+      const item = vm._itemEntityMap?.get(id);
+      if (!item) throw new Error("a chosen card isn't in the grid any more; run Auto Complete again");
+      if (callIfFn(vm, "isItemSelectable", item) === false) throw new Error(`${itemName(item)} can't be selected here`);
+      if (vm.selectItem(item) === false) throw new Error("the grid's selection limit was reached");
+      try {
+        view?.setItemSelected?.(item, true);
+      } catch {
+        /* card not on the visible page */
+      }
+    }
+    callIfFn(controller, "_refreshSelectionControls");
+    const score = Number(callIfFn(vm, "getSelectedScore")) || 0;
+    if (score < pointsNeeded(challenge)) throw new Error(`the selection is worth ${score} points, short of ${pointsNeeded(challenge)}`);
+    return score;
+  }
+
+  async function selectPoints(progress, args) {
+    const screen = oneClickScreen();
+    if (!screen || screen.challenge.id !== args?.challengeId) throw new Error("A different SBC is open now. Run Auto Complete again.");
+    const score = selectOneClick(screen, args.itemIds || []);
+    return { selected: (args.itemIds || []).length, score };
+  }
+
+  // Select, then submit (services.SBC.submitOneClickChallenge: what the Review screen calls).
+  async function completePoints(progress, args) {
+    const screen = oneClickScreen();
+    if (!screen || screen.challenge.id !== args?.challengeId) throw new Error("A different SBC is open now. Run Auto Complete again.");
+    const { challenge, set, vm } = screen;
+    const services = g("services");
+    if (typeof services?.SBC?.submitOneClickChallenge !== "function") throw new Error("services.SBC.submitOneClickChallenge missing (EA update?)");
+    const itemIds = args.itemIds || [];
+    const score = selectOneClick(screen, itemIds);
+    if (callIfFn(challenge, "hasNotStarted") === true && typeof services.SBC.initiateOneClickChallenge === "function") {
+      progress("Starting the challenge…");
+      const started = await observeOnce(services.SBC.initiateOneClickChallenge(challenge));
+      if (!started?.success) throw new Error(`EA didn't start the challenge (status ${started?.status ?? "?"})`);
+    }
+    await sleep(jitter(FILL_PAUSE_MS));
+    progress(`Submitting ${itemIds.length} cards (${score} points)…`);
+    const res = await observeOnce(services.SBC.submitOneClickChallenge(challenge, set, itemIds), 30000);
+    if (res?.status === 409) throw new Error("some of these cards are in one of your squads, so EA asked for confirmation. Nothing was submitted; turn on Exclude Active Squad Players or submit from Review Selection.");
+    if (!res?.success) throw new Error(`EA rejected the submission (status ${res?.status ?? "?"})`);
+    callIfFn(vm, "clearSelection");
+    const done = res.data || {};
+    if (done.challengeCompleted || done.setCompleted) leaveSubmittedScreen();
+    return { submitted: itemIds.length, score: done.submittedScore ?? score, challengeCompleted: !!done.challengeCompleted, setCompleted: !!done.setCompleted };
+  }
+
   function context() {
     if (show.squadValue && installSquadValue()) renderSquadValue(); // fallback refresh
     const formations = Object.fromEntries(learnedFormations);
+    const oneClick = oneClickScreen();
+    if (oneClick) {
+      const { challenge, vm } = oneClick;
+      return {
+        onSbc: false, onPoints: true, formations, slotsVersion,
+        sidebarButton: ensureSidebarButton("points", "Auto Complete"),
+        challengeId: challenge.id,
+        challengeName: challenge.name,
+        pointsRequired: Number(challenge.scoreRequirement) || 0,
+        pointsSubmitted: Number(challenge.submittedScore) || 0,
+        pointsSelected: Number(callIfFn(vm, "getSelectedScore")) || 0
+      };
+    }
     if (onHubScreen()) {
       document.querySelectorAll(".sbcs-side").forEach((b) => b.remove());
       const titles = hubTileTitles();
@@ -1602,9 +1835,13 @@
 
   const GALLERY_ICON = [["path", { d: "M8 1.5 14.5 8 8 14.5 1.5 8z", fill: "#8ce6d6" }]];
 
-  // FUT Gallery item score. Where FC 27 keeps it is still unknown (see galleryProbe); these are
-  // guesses, and the row stays hidden until one returns a number.
+  // FUT Gallery item score: CONFIRMED as the item fields sbsScore (= gradingScore) since the
+  // Sept 2026 Web App update (e.g. a base 84 gold = 830). Older fallbacks kept in case it moves.
   function galleryScore(item) {
+    for (const key of ["sbsScore", "gradingScore"]) {
+      const v = Number(item?.[key]);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
     for (const name of ["getGalleryScore", "getShowcaseScore", "getItemScore", "getScore"]) {
       const v = callIfFn(item, name);
       if (typeof v === "number" && v > 0) return v;
@@ -1753,7 +1990,7 @@
     if (score) {
       const row2 = document.createElement("div");
       row2.className = "r";
-      row2.append(bubble("gal", "FUT Gallery item score", svgIcon(GALLERY_ICON), document.createTextNode(score.toLocaleString("en-US"))));
+      row2.append(bubble("gal", "FUT Gallery score", svgIcon(GALLERY_ICON), document.createTextNode(score.toLocaleString("en-US"))));
       wrap.append(row2);
     }
     if (getComputedStyle(root).position === "static") root.style.position = "relative";
@@ -2206,7 +2443,7 @@
 
   const COMMANDS = {
     probe, dumpClub, dumpSbc, dumpAllSbcs, ratingCode, solveInput, fillSquad, undoFill,
-    setInput, fillSet, completeRepeat, completeSet, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
+    setInput, fillSet, completeRepeat, completeSet, pointsInput, selectPoints, completePoints, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
     galleryProbe, exportSlots, seedSlots
   };
   const QUICK = new Set(["context", "setPriceOverlay", "describePlayers", "setTileValue", "seedFormations", "exportSlots", "seedSlots"]); // instant and read-mostly: allowed while busy

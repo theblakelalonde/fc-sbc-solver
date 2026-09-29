@@ -1,0 +1,1294 @@
+{
+  "kind": "sbc-all",
+  "capturedAt": "2026-09-29T00:09:37.166Z",
+  "enums": {
+    "SBCEligibilityKey": {
+      "0": "TEAM_STAR_RATING",
+      "2": "PLAYER_COUNT",
+      "3": "PLAYER_QUALITY",
+      "4": "SAME_NATION_COUNT",
+      "5": "SAME_LEAGUE_COUNT",
+      "6": "SAME_CLUB_COUNT",
+      "7": "NATION_COUNT",
+      "8": "LEAGUE_COUNT",
+      "9": "CLUB_COUNT",
+      "10": "NATION_ID",
+      "11": "LEAGUE_ID",
+      "12": "CLUB_ID",
+      "13": "SCOPE",
+      "15": "LEGEND_COUNT",
+      "16": "NUM_TROPHY_REQUIRED",
+      "17": "PLAYER_LEVEL",
+      "18": "PLAYER_RARITY",
+      "19": "TEAM_RATING",
+      "21": "PLAYER_COUNT_COMBINED",
+      "25": "PLAYER_RARITY_GROUP",
+      "26": "PLAYER_MIN_OVR",
+      "27": "PLAYER_EXACT_OVR",
+      "28": "PLAYER_MAX_OVR",
+      "30": "FIRST_OWNER_PLAYERS_COUNT",
+      "33": "PLAYER_TRADABILITY",
+      "35": "CHEMISTRY_POINTS",
+      "36": "ALL_PLAYERS_CHEMISTRY_POINTS",
+      "40": "ACADEMY_PLAYER_SLOTTING",
+      "41": "PLAYER_ATTRIBUTE",
+      "42": "ADDITIONAL_TARGET_VALUE",
+      "TEAM_STAR_RATING": 0,
+      "PLAYER_COUNT": 2,
+      "PLAYER_QUALITY": 3,
+      "SAME_NATION_COUNT": 4,
+      "SAME_LEAGUE_COUNT": 5,
+      "SAME_CLUB_COUNT": 6,
+      "NATION_COUNT": 7,
+      "LEAGUE_COUNT": 8,
+      "CLUB_COUNT": 9,
+      "NATION_ID": 10,
+      "LEAGUE_ID": 11,
+      "CLUB_ID": 12,
+      "SCOPE": 13,
+      "LEGEND_COUNT": 15,
+      "NUM_TROPHY_REQUIRED": 16,
+      "PLAYER_LEVEL": 17,
+      "PLAYER_RARITY": 18,
+      "TEAM_RATING": 19,
+      "PLAYER_COUNT_COMBINED": 21,
+      "PLAYER_RARITY_GROUP": 25,
+      "PLAYER_MIN_OVR": 26,
+      "PLAYER_EXACT_OVR": 27,
+      "PLAYER_MAX_OVR": 28,
+      "FIRST_OWNER_PLAYERS_COUNT": 30,
+      "PLAYER_TRADABILITY": 33,
+      "CHEMISTRY_POINTS": 35,
+      "ALL_PLAYERS_CHEMISTRY_POINTS": 36,
+      "ACADEMY_PLAYER_SLOTTING": 40,
+      "PLAYER_ATTRIBUTE": 41,
+      "ADDITIONAL_TARGET_VALUE": 42
+    },
+    "SBCEligibilityScope": {
+      "0": "GREATER",
+      "1": "LOWER",
+      "2": "EXACT",
+      "GREATER": 0,
+      "LOWER": 1,
+      "EXACT": 2
+    }
+  },
+  "sets": [
+    {
+      "id": 1,
+      "name": "Intro to SBCs",
+      "challengesCount": 4
+    },
+    {
+      "id": 3,
+      "name": "Intro to Upgrade SBCs",
+      "challengesCount": 3
+    },
+    {
+      "id": 4,
+      "name": "Bronze Upgrade",
+      "challengesCount": 1
+    },
+    {
+      "id": 5,
+      "name": "Silver Upgrade",
+      "challengesCount": 1
+    },
+    {
+      "id": 6,
+      "name": "Gold Upgrade",
+      "challengesCount": 1
+    },
+    {
+      "id": 7,
+      "name": "Intro to Streamlined SBCs",
+      "challengesCount": 4
+    },
+    {
+      "id": 8,
+      "name": "Bronze and Silver Re-roll",
+      "challengesCount": 1
+    },
+    {
+      "id": 9,
+      "name": "Gold Re-Roll",
+      "challengesCount": 1
+    },
+    {
+      "id": 10,
+      "name": "League & Nation Advanced",
+      "challengesCount": 3
+    },
+    {
+      "id": 12,
+      "name": "83+ Upgrade",
+      "challengesCount": 1
+    },
+    {
+      "id": 19,
+      "name": "Marquee Matchups",
+      "challengesCount": 4
+    },
+    {
+      "id": 20,
+      "name": "Intro to Player SBCs",
+      "challengesCount": 1
+    },
+    {
+      "id": 21,
+      "name": "Destined for Glory Challenge 1",
+      "challengesCount": 1
+    },
+    {
+      "id": 23,
+      "name": "2x 79+ Upgrade",
+      "challengesCount": 1
+    },
+    {
+      "id": 25,
+      "name": "Antonio Nusa",
+      "challengesCount": 1
+    },
+    {
+      "id": 26,
+      "name": "Renato Veiga",
+      "challengesCount": 1
+    },
+    {
+      "id": 29,
+      "name": "TOTW Upgrade",
+      "challengesCount": 1
+    }
+  ],
+  "challenges": [
+    {
+      "challenge": {
+        "id": 48,
+        "name": "Destined for Glory Challenge 1",
+        "setId": 21,
+        "formation": "f451",
+        "type": "OPEN_CHALLENGE",
+        "eligibilityOperation": "AND"
+      },
+      "requirements": [
+        {
+          "text": "Players from the same League: Min. 2",
+          "firstKey": 5,
+          "firstKeyName": "SAME_LEAGUE_COUNT",
+          "firstValue": [
+            2
+          ],
+          "scope": 0,
+          "scopeName": "GREATER",
+          "count": -1,
+          "kv": {
+            "SAME_LEAGUE_COUNT": [
+              2
+            ]
+          },
+          "raw": {
+            "kvPairs": {
+              "__collection": {
+                "5": [
+                  2
+                ]
+              }
+            },
+            "count": -1,
+            "scope": 0,
+            "__type": "UTSBCEligibilityDTO"
+          },
+          "protoMethods": [
+            "buildAttributeRequirementString",
+            "buildString",
+            "conforms",
+            "dealloc",
+            "getFirstKey",
+            "getFirstValue",
+            "getValue",
+            "init",
+            "isSubClass",
+            "keys"
+          ]
+        },
+        {
+          "text": "Nationalities in Squad: Min. 3",
+          "firstKey": 7,
+          "firstKeyName": "NATION_COUNT",
+          "firstValue": [
+            3
+          ],
+          "scope": 0,
+          "scopeName": "GREATER",
+          "count": -1,
+          "kv": {
+            "NATION_COUNT": [
+              3
+            ]
+          },
+          "raw": {
+            "kvPairs": {
+              "__collection": {
+                "7": [
+                  3
+                ]
+              }
+            },
+            "count": -1,
+            "scope": 0,
+            "__type": "UTSBCEligibilityDTO"
+          },
+          "protoMethods": [
+            "buildAttributeRequirementString",
+            "buildString",
+            "conforms",
+            "dealloc",
+            "getFirstKey",
+            "getFirstValue",
+            "getValue",
+            "init",
+            "isSubClass",
+            "keys"
+          ]
+        },
+        {
+          "text": "Clubs in Squad: Max. 4",
+          "firstKey": 9,
+          "firstKeyName": "CLUB_COUNT",
+          "firstValue": [
+            4
+          ],
+          "scope": 1,
+          "scopeName": "LOWER",
+          "count": -1,
+          "kv": {
+            "CLUB_COUNT": [
+              4
+            ]
+          },
+          "raw": {
+            "kvPairs": {
+              "__collection": {
+                "9": [
+                  4
+                ]
+              }
+            },
+            "count": -1,
+            "scope": 1,
+            "__type": "UTSBCEligibilityDTO"
+          },
+          "protoMethods": [
+            "buildAttributeRequirementString",
+            "buildString",
+            "conforms",
+            "dealloc",
+            "getFirstKey",
+            "getFirstValue",
+            "getValue",
+            "init",
+            "isSubClass",
+            "keys"
+          ]
+        },
+        {
+          "text": "Player Quality: Min. Bronze",
+          "firstKey": 3,
+          "firstKeyName": "PLAYER_QUALITY",
+          "firstValue": [
+            1
+          ],
+          "scope": 0,
+          "scopeName": "GREATER",
+          "count": -1,
+          "kv": {
+            "PLAYER_QUALITY": [
+              1
+            ]
+          },
+          "raw": {
+            "kvPairs": {
+              "__collection": {
+                "3": [
+                  1
+                ]
+              }
+            },
+            "count": -1,
+            "scope": 0,
+            "__type": "UTSBCEligibilityDTO"
+          },
+          "protoMethods": [
+            "buildAttributeRequirementString",
+            "buildString",
+            "conforms",
+            "dealloc",
+            "getFirstKey",
+            "getFirstValue",
+            "getValue",
+            "init",
+            "isSubClass",
+            "keys"
+          ]
+        },
+        {
+          "text": "Total Chemistry: Min. 14",
+          "firstKey": 35,
+          "firstKeyName": "CHEMISTRY_POINTS",
+          "firstValue": [
+            14
+          ],
+          "scope": 0,
+          "scopeName": "GREATER",
+          "count": -1,
+          "kv": {
+            "CHEMISTRY_POINTS": [
+              14
+            ]
+          },
+          "raw": {
+            "kvPairs": {
+              "__collection": {
+                "35": [
+                  14
+                ]
+              }
+            },
+            "count": -1,
+            "scope": 0,
+            "__type": "UTSBCEligibilityDTO"
+          },
+          "protoMethods": [
+            "buildAttributeRequirementString",
+            "buildString",
+            "conforms",
+            "dealloc",
+            "getFirstKey",
+            "getFirstValue",
+            "getValue",
+            "init",
+            "isSubClass",
+            "keys"
+          ]
+        }
+      ],
+      "squad": {
+        "summary": {
+          "getChemistry": 0,
+          "getParameterChemistry": [],
+          "getRating": 0,
+          "getSortedParameterChemistry": [],
+          "getStarRating": 0
+        },
+        "formation": {
+          "displayName": "4-5-1",
+          "generalPositions": [
+            0,
+            3,
+            5,
+            5,
+            7,
+            12,
+            14,
+            16,
+            18,
+            18,
+            25
+          ],
+          "id": 21,
+          "name": "f451",
+          "positions": [
+            {
+              "id": 0,
+              "typeId": 0,
+              "name": "GK",
+              "typeName": "GK",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 3,
+              "typeId": 3,
+              "name": "RB",
+              "typeName": "RB",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 4,
+              "typeId": 5,
+              "name": "RCB",
+              "typeName": "CB",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 6,
+              "typeId": 5,
+              "name": "LCB",
+              "typeName": "CB",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 7,
+              "typeId": 7,
+              "name": "LB",
+              "typeName": "LB",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 12,
+              "typeId": 12,
+              "name": "RM",
+              "typeName": "RM",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 14,
+              "typeId": 14,
+              "name": "CM",
+              "typeName": "CM",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 16,
+              "typeId": 16,
+              "name": "LM",
+              "typeName": "LM",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 17,
+              "typeId": 18,
+              "name": "RAM",
+              "typeName": "CAM",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 19,
+              "typeId": 18,
+              "name": "LAM",
+              "typeName": "CAM",
+              "__type": "UTSquadPositionDTO"
+            },
+            {
+              "id": 25,
+              "typeId": 25,
+              "name": "ST",
+              "typeName": "ST",
+              "__type": "UTSquadPositionDTO"
+            }
+          ],
+          "teamBonus": [],
+          "uniquePositions": [
+            0,
+            3,
+            4,
+            6,
+            7,
+            12,
+            14,
+            16,
+            17,
+            19,
+            25
+          ],
+          "index": 25,
+          "__type": "UTSquadFormationDTO"
+        },
+        "formationMethods": [
+          "conforms",
+          "dealloc",
+          "getDisplayName",
+          "getId",
+          "getName",
+          "getPosition",
+          "getPositions",
+          "getTeamBonus",
+          "init",
+          "isSubClass"
+        ],
+        "slots": [
+          {
+            "i": 0,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 0,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 0,
+                "typeId": 0,
+                "name": "GK",
+                "typeName": "GK",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 0,
+              "uniquePosition": 0,
+              "generalPositionName": "GK",
+              "uniquePositionName": "GK",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 0,
+              "typeId": 0,
+              "name": "GK",
+              "typeName": "GK",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 1,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 1,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 3,
+                "typeId": 3,
+                "name": "RB",
+                "typeName": "RB",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 3,
+              "uniquePosition": 3,
+              "generalPositionName": "RB",
+              "uniquePositionName": "RB",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 3,
+              "typeId": 3,
+              "name": "RB",
+              "typeName": "RB",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 2,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 2,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 4,
+                "typeId": 5,
+                "name": "RCB",
+                "typeName": "CB",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 5,
+              "uniquePosition": 4,
+              "generalPositionName": "CB",
+              "uniquePositionName": "RCB",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 4,
+              "typeId": 5,
+              "name": "RCB",
+              "typeName": "CB",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 3,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 3,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 6,
+                "typeId": 5,
+                "name": "LCB",
+                "typeName": "CB",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 5,
+              "uniquePosition": 6,
+              "generalPositionName": "CB",
+              "uniquePositionName": "LCB",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 6,
+              "typeId": 5,
+              "name": "LCB",
+              "typeName": "CB",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 4,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 4,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 7,
+                "typeId": 7,
+                "name": "LB",
+                "typeName": "LB",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 7,
+              "uniquePosition": 7,
+              "generalPositionName": "LB",
+              "uniquePositionName": "LB",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 7,
+              "typeId": 7,
+              "name": "LB",
+              "typeName": "LB",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 5,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 5,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 12,
+                "typeId": 12,
+                "name": "RM",
+                "typeName": "RM",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 12,
+              "uniquePosition": 12,
+              "generalPositionName": "RM",
+              "uniquePositionName": "RM",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 12,
+              "typeId": 12,
+              "name": "RM",
+              "typeName": "RM",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 6,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 6,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 14,
+                "typeId": 14,
+                "name": "CM",
+                "typeName": "CM",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 14,
+              "uniquePosition": 14,
+              "generalPositionName": "CM",
+              "uniquePositionName": "CM",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 14,
+              "typeId": 14,
+              "name": "CM",
+              "typeName": "CM",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 7,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 7,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 16,
+                "typeId": 16,
+                "name": "LM",
+                "typeName": "LM",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 16,
+              "uniquePosition": 16,
+              "generalPositionName": "LM",
+              "uniquePositionName": "LM",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 16,
+              "typeId": 16,
+              "name": "LM",
+              "typeName": "LM",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 8,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 8,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 17,
+                "typeId": 18,
+                "name": "RAM",
+                "typeName": "CAM",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 18,
+              "uniquePosition": 17,
+              "generalPositionName": "CAM",
+              "uniquePositionName": "RAM",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 17,
+              "typeId": 18,
+              "name": "RAM",
+              "typeName": "CAM",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 9,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 9,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 19,
+                "typeId": 18,
+                "name": "LAM",
+                "typeName": "CAM",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 18,
+              "uniquePosition": 19,
+              "generalPositionName": "CAM",
+              "uniquePositionName": "LAM",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 19,
+              "typeId": 18,
+              "name": "LAM",
+              "typeName": "CAM",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          },
+          {
+            "i": 10,
+            "raw": {
+              "onDataUpdated": {
+                "_observers": "[array(1)]",
+                "__type": "_0x311757"
+              },
+              "_chemistry": 0,
+              "_potentialChemistry": 0,
+              "clubChemistryPoints": 0,
+              "index": 10,
+              "kitNumber": 0,
+              "leagueChemistryPoints": 0,
+              "nationChemistryPoints": 0,
+              "playerRole": null,
+              "position": {
+                "id": 25,
+                "typeId": 25,
+                "name": "ST",
+                "typeName": "ST",
+                "__type": "UTSquadPositionDTO"
+              },
+              "requirement": null
+            },
+            "accessors": {
+              "chemistry": 0,
+              "potentialChemistry": 0,
+              "generalPosition": 25,
+              "uniquePosition": 25,
+              "generalPositionName": "ST",
+              "uniquePositionName": "ST",
+              "inPossiblePosition": false,
+              "className": "UTSquadSlotEntity"
+            },
+            "position": {
+              "id": 25,
+              "typeId": 25,
+              "name": "ST",
+              "typeName": "ST",
+              "__type": "UTSquadPositionDTO"
+            },
+            "requirement": null,
+            "item": null
+          }
+        ],
+        "chemistryVO": {
+          "parameters": [],
+          "slots": [
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            },
+            {
+              "missed": 0,
+              "parameters": [],
+              "points": 0,
+              "__type": "UTSquadSlotChemistryVO"
+            }
+          ],
+          "chemistry": 0,
+          "missed": 0,
+          "__type": "UTSquadChemistryVO"
+        },
+        "slotMethods": [
+          "_eItemDataUpdated",
+          "conforms",
+          "dealloc",
+          "getChemistry",
+          "getGeneralPosition",
+          "getGeneralPositionName",
+          "getIndex",
+          "getItem",
+          "getKitNumber",
+          "getRequirement",
+          "getUniquePosition",
+          "getUniquePositionName",
+          "init",
+          "isBrick",
+          "isCustomBrick",
+          "isRegularBrick",
+          "isSubClass",
+          "isValid",
+          "setChemistry",
+          "setItem",
+          "setKitNumber",
+          "setPosition",
+          "setRequirement"
+        ],
+        "raw": {
+          "onDataUpdated": {
+            "_observers": "[array(1)]",
+            "__type": "_0x311757"
+          },
+          "chemCalculator": {
+            "chemService": "[UTChemistryService]",
+            "teamConfigRepo": "[UTTeamConfigRepository]",
+            "__type": "UTSquadChemCalculatorUtils"
+          },
+          "_owner": 0,
+          "_id": 1,
+          "_captain": 0,
+          "_name": "",
+          "_formation": {
+            "displayName": "4-5-1",
+            "generalPositions": "[array(11)]",
+            "id": 21,
+            "name": "f451",
+            "positions": "[array(11)]",
+            "teamBonus": "[array(0)]",
+            "uniquePositions": "[array(11)]",
+            "index": 25,
+            "__type": "UTSquadFormationDTO"
+          },
+          "_rating": 0,
+          "_chemistry": 0,
+          "_manager": {
+            "onDataUpdated": "[_0x311757]",
+            "_chemistry": 0,
+            "_item": "[UTNullItemEntity]",
+            "_potentialChemistry": 0,
+            "clubChemistryPoints": 0,
+            "index": -1,
+            "kitNumber": 0,
+            "leagueChemistryPoints": 0,
+            "nationChemistryPoints": 0,
+            "playerRole": null,
+            "position": null,
+            "requirement": null,
+            "__type": "UTNullSquadSlotEntity"
+          },
+          "_players": [
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]",
+            "[UTSquadSlotEntity]"
+          ],
+          "_type": "REGULAR_SQUAD",
+          "_valid": false,
+          "_isActive": false,
+          "_isTOTW": false,
+          "_isSBC": true,
+          "_timestamp": 0,
+          "_modified": false,
+          "simpleBrickIndices": [],
+          "customBrickIndices": [],
+          "_squadSaveDelegate": null,
+          "_squadDAO": {
+            "authDelegate": "[_0x268b06]",
+            "itemRepo": "[UTItemDomainRepository]",
+            "squadRepo": "[UTSquadRepository]",
+            "updateFactory": "[UTObjectivesUpdateFactory]",
+            "mentalityFactory": "[UTSquadTacticsEntityFactory]",
+            "__type": "_0xc57c73"
+          },
+          "_mentalities": {
+            "__collection": {}
+          },
+          "activeTacticSlot": 0,
+          "chemistryVO": {
+            "parameters": "[array(0)]",
+            "slots": "[array(11)]",
+            "chemistry": 0,
+            "missed": 0,
+            "__type": "UTSquadChemistryVO"
+          },
+          "__type": "UTSquadEntity"
+        },
+        "protoMethods": [
+          "_addItemToSlot",
+          "_calculateRating",
+          "_eMentalityDataUpdated",
+          "_eSlotDataUpdated",
+          "_emptySlot",
+          "_filterBrickIndices",
+          "_filterSimpleBrickIndices",
+          "_getPlayerSlotByItemId",
+          "_getSlotByIndex",
+          "_getSlotByItem",
+          "_isValidPlayerSlot",
+          "_isValidSlotIndex",
+          "_removeItemFromSlot",
+          "_slotsHaveValidPlayers",
+          "_updateType",
+          "addItemToSlot",
+          "areReservesComplete",
+          "areSubsComplete",
+          "calculateChemistry",
+          "conforms",
+          "containsDreamItem",
+          "containsItem",
+          "containsVariationOfCard",
+          "dealloc",
+          "deleteTacticProfile",
+          "getActiveTactic",
+          "getAllBrickIndices",
+          "getCaptain",
+          "getChemistry",
+          "getCustomizedTacticSlots",
+          "getFieldAndSubPlayers",
+          "getFieldPlayers",
+          "getFirstEmptyTacticSlot",
+          "getFormation",
+          "getId",
+          "getManager",
+          "getName",
+          "getNonBrickSlots",
+          "getNumOfRequiredPlayers",
+          "getNumberOfLegends",
+          "getOwner",
+          "getParameterChemistry",
+          "getParameterChemistryByType",
+          "getPlayer",
+          "getPlayers",
+          "getPlayersByZone",
+          "getRating",
+          "getReservePlayers",
+          "getRoleBySlotIndex",
+          "getSBCSlots",
+          "getSlot",
+          "getSlotChemistry",
+          "getSlots",
+          "getSortedParameterChemistry",
+          "getStarRating",
+          "getSubAndReservePlayers",
+          "getSubPlayers",
+          "getTacticMentalities",
+          "getTacticMentalityById",
+          "getTacticSlotsByMentalityId",
+          "getType",
+          "hasCustomizedTactics",
+          "hasEmptyTacticSlots",
+          "hasManager",
+          "hasModifiedTactics",
+          "init",
+          "isActive",
+          "isCacheExpired",
+          "isDream",
+          "isModified",
+          "isSBC",
+          "isSBCSquadEligible",
+          "isSquadEmpty",
+          "isSquadFull",
+          "isSquadLoaded",
+          "isStartingElevenComplete",
+          "isSubClass",
+          "isTOTW",
+          "isValid",
+          "isValidForTOTW",
+          "removeAllItems",
+          "removeItem",
+          "removeItemFromSlot",
+          "removePlayerById",
+          "replaceConceptItem",
+          "save",
+          "setActive",
+          "setCacheTimestamp",
+          "setFormation",
+          "setName",
+          "setPlayers",
+          "setSBC",
+          "setSaveDelegate",
+          "setTOTW",
+          "setTacticMentality",
+          "swapPlayersByIndex",
+          "update",
+          "updateChemistry"
+        ]
+      }
+    }
+  ]
+}

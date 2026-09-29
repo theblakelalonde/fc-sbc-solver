@@ -17,7 +17,9 @@
     CLUB_ID: 12, SCOPE: 13, LEGEND_COUNT: 15, NUM_TROPHY_REQUIRED: 16, PLAYER_LEVEL: 17, PLAYER_RARITY: 18,
     TEAM_RATING: 19, PLAYER_COUNT_COMBINED: 21, PLAYER_RARITY_GROUP: 25, PLAYER_MIN_OVR: 26,
     PLAYER_EXACT_OVR: 27, PLAYER_MAX_OVR: 28, FIRST_OWNER_PLAYERS_COUNT: 30, PLAYER_TRADABILITY: 33,
-    CHEMISTRY_POINTS: 35, ALL_PLAYERS_CHEMISTRY_POINTS: 36
+    CHEMISTRY_POINTS: 35, ALL_PLAYERS_CHEMISTRY_POINTS: 36,
+    // Added in the Sept 2026 Web App update; not modelled yet (reported as unsupported).
+    ACADEMY_PLAYER_SLOTTING: 40, PLAYER_ATTRIBUTE: 41, ADDITIONAL_TARGET_VALUE: 42
   };
   const KEY_NAMES = Object.fromEntries(Object.entries(K).map(([k, v]) => [v, k]));
   const GREATER = 0, LOWER = 1, EXACT = 2;
@@ -75,6 +77,7 @@
       legend: !!pr.isLegend,
       hero: !!pr.isLeagueHeroItem,
       marketPrice: market,
+      galleryScore: Number(f.sbsScore ?? f.gradingScore) || 0, // FUT Gallery score (Sept 2026 update)
       inStorage,
       inAcademy: !!pr.isEnrolledInAcademy || !!pr.isActiveInAcademy,
       inEvolution: !!pr.isActiveInTimedEvolution,
@@ -124,12 +127,30 @@
     return { players, links: teamLinkMap(data.teamLinks || []) };
   }
 
-  function challengeFromDump(data) {
-    const ch = data.challenge;
+  // Player-attribute requirement (Sept 2026 update): one DTO carrying PLAYER_ATTRIBUTE (41, which
+  // attribute; 1 = OVR) and the threshold under key 40, e.g. "OVR Max: 83" = {40: [83], 41: [1]}
+  // with scope max. Only attribute 1 is modelled, and only when the app's own text says OVR.
+  const ATTRIBUTE_OVR = 1;
+  const isOvrText = (t) => typeof t !== "string" || !t || /\bOVR\b|overall|rating/i.test(t);
+
+  function requirementsFromDump(list) {
     const requirements = [];
-    for (const r of data.requirements || []) {
+    for (const r of list || []) {
       let kv = ((r.raw || {}).kvPairs || {}).__collection || {};
       if (!Object.keys(kv).length && r.firstKey !== undefined && r.firstKey !== null) kv = { [r.firstKey]: r.firstValue || [] };
+      const scope = r.scope === undefined ? GREATER : Number(r.scope);
+      const count = r.count === undefined ? -1 : Number(r.count);
+      if (kv[K.PLAYER_ATTRIBUTE] && kv[K.ACADEMY_PLAYER_SLOTTING] && Object.keys(kv).length === 2) {
+        requirements.push({
+          key: K.PLAYER_ATTRIBUTE,
+          attribute: Number(kv[K.PLAYER_ATTRIBUTE][0]),
+          attributeKnown: isOvrText(r.text),
+          scope, count,
+          values: (kv[K.ACADEMY_PLAYER_SLOTTING] || []).map(Number),
+          text: r.text
+        });
+        continue;
+      }
       for (const [key, values] of Object.entries(kv)) {
         requirements.push({
           key: Number(key),
@@ -139,6 +160,12 @@
         });
       }
     }
+    return requirements;
+  }
+
+  function challengeFromDump(data) {
+    const ch = data.challenge;
+    const requirements = requirementsFromDump(data.requirements);
     let slots = [];
     const squadPlayerIds = {};
     for (const s of ((data.squad || {}).slots) || []) {
@@ -183,8 +210,8 @@
     };
   }
 
-  const describeReq = (r) =>
-    `${KEY_NAMES[r.key] || `KEY_${r.key}`} ${SCOPE_NAMES[r.scope] ?? r.scope} [${r.values.join(",")}]${r.count < 0 ? "" : ` count=${r.count}`}`;
+  const describeReq = (r) => (r.key === K.PLAYER_ATTRIBUTE && r.text ? r.text
+    : `${KEY_NAMES[r.key] || `KEY_${r.key}`}${r.attribute !== undefined ? ` #${r.attribute}` : ""} ${SCOPE_NAMES[r.scope] ?? r.scope} [${r.values.join(",")}]${r.count < 0 ? "" : ` count=${r.count}`}`);
   const isOpen = (s) => s.type === "DEFAULT";
 
   // ---------- costs and options ----------
@@ -322,7 +349,8 @@
   const compare = (v, scope, t) => (scope === GREATER ? v >= t : scope === LOWER ? v <= t : v === t);
 
   const PER_PLAYER_KEYS = new Set([K.NATION_ID, K.LEAGUE_ID, K.CLUB_ID, K.PLAYER_RARITY, K.PLAYER_RARITY_GROUP,
-    K.PLAYER_QUALITY, K.PLAYER_LEVEL, K.PLAYER_MIN_OVR, K.PLAYER_EXACT_OVR, K.PLAYER_MAX_OVR]);
+    K.PLAYER_QUALITY, K.PLAYER_LEVEL, K.PLAYER_MIN_OVR, K.PLAYER_EXACT_OVR, K.PLAYER_MAX_OVR, K.PLAYER_ATTRIBUTE]);
+  const attributeSupported = (r) => r.key !== K.PLAYER_ATTRIBUTE || (r.attribute === ATTRIBUTE_OVR && r.attributeKnown !== false);
   const SQUAD_KEYS = new Set([K.TEAM_RATING, K.CHEMISTRY_POINTS, K.ALL_PLAYERS_CHEMISTRY_POINTS, K.SAME_NATION_COUNT,
     K.SAME_LEAGUE_COUNT, K.SAME_CLUB_COUNT, K.NATION_COUNT, K.LEAGUE_COUNT, K.CLUB_COUNT,
     K.FIRST_OWNER_PLAYERS_COUNT, K.LEGEND_COUNT, K.PLAYER_COUNT]);
@@ -340,12 +368,13 @@
       case K.PLAYER_MIN_OVR: return p.rating >= v[0];
       case K.PLAYER_EXACT_OVR: return p.rating === v[0];
       case K.PLAYER_MAX_OVR: return p.rating <= v[0];
+      case K.PLAYER_ATTRIBUTE: return r.attribute === ATTRIBUTE_OVR && compare(p.rating, r.scope, v[0]);
       default: throw new Error(`not a per-player key ${r.key}`);
     }
   }
 
   function unsupported(ch) {
-    const out = ch.requirements.filter((r) => !PER_PLAYER_KEYS.has(r.key) && !SQUAD_KEYS.has(r.key)).map(describeReq);
+    const out = ch.requirements.filter((r) => (!PER_PLAYER_KEYS.has(r.key) && !SQUAD_KEYS.has(r.key)) || !attributeSupported(r)).map(describeReq);
     if (ch.operation !== "AND" && ch.requirements.length > 1) out.push(`eligibilityOperation ${ch.operation}`);
     for (const s of ch.slots) {
       if (s.type !== "DEFAULT" && s.type !== "BRICK" && !(s.type === "CUSTOM_BRICK" && s.brick)) out.push(`slot ${s.index} type ${s.type}`);
@@ -1534,12 +1563,72 @@
     return { challenge: { name: `set of ${challenges.length}` }, ...result };
   }
 
+  // ---------- gallery-score SBCs ("One Click SBC", Sept 2026 Web App update) ----------
+  // Pick club cards whose FUT Gallery scores (sbsScore) add up to at least `required`. Per-card
+  // requirements (e.g. OVR Min. 45) filter the pool; anything else is reported as unsupported.
+  // objective "price": cheapest; "rating": lowest-rated cards. preference "highToLow": as few
+  // cards as possible first (then the objective).
+  const POINTS_CARD_WEIGHT = 1e7;
+
+  function solvePoints(highs, players, links, costOpts, opts, { required, requirements = [], preference = "lowToHigh", maxCards = 0 }) {
+    const started = now();
+    const { pool: usable, excluded, costs } = usablePool(players, costOpts);
+    const unsupportedReqs = requirements.filter((r) => !PER_PLAYER_KEYS.has(r.key) || !attributeSupported(r)).map(describeReq);
+    const perCard = requirements.filter((r) => PER_PLAYER_KEYS.has(r.key));
+    const pool = usable.filter((p) => p.galleryScore > 0 && perCard.every((r) => playerMatches(r, p, links)));
+    const stats = { poolSize: pool.length, excluded, wallTimeS: 0 };
+    const done = (status, chosen = []) => {
+      stats.wallTimeS = Math.round((now() - started) * 1000) / 1000;
+      return {
+        status,
+        required,
+        score: chosen.reduce((a, p) => a + p.galleryScore, 0),
+        totalCost: chosen.reduce((a, p) => a + costs.get(p.id), 0),
+        squadValue: chosen.reduce((a, p) => a + badgePrice(p), 0),
+        players: chosen.map((p) => ({
+          playerId: p.id, name: p.name, rating: p.rating, galleryScore: p.galleryScore,
+          marketPrice: badgePrice(p), tradable: p.tradable, inStorage: p.inStorage, cost: costs.get(p.id)
+        })),
+        unsupported: unsupportedReqs,
+        stats
+      };
+    };
+    if (unsupportedReqs.length) return done("unsupported");
+    if (!(required > 0)) return done("optimal");
+    if (pool.reduce((a, p) => a + p.galleryScore, 0) < required) return done("infeasible");
+    const lp = new Lp();
+    const y = pool.map((p, i) => lp.v(`p${i}`));
+    lp.row(pool.map((p, i) => [p.galleryScore, y[i]]), ">=", required);
+    if (maxCards > 0) lp.row(y.map((v) => [1, v]), "<=", maxCards); // the grid's selection limit
+    pool.forEach((p, i) => {
+      const cost = Math.min(costs.get(p.id), RATING_SCALE - 1);
+      const base = opts.objective === "rating" ? p.rating * RATING_SCALE + cost : costs.get(p.id);
+      lp.obj(base + (preference === "highToLow" ? POINTS_CARD_WEIGHT : 0), y[i]);
+    });
+    const res = runHighs(highs, lp, opts.timeLimitS, 0);
+    if (!res.hasSolution) return done(res.status === "infeasible" ? "infeasible" : "timeout");
+    const chosen = pool.filter((p, i) => (res.values[y[i]] ?? 0) > 0.5);
+    return done(res.status === "optimal" ? "optimal" : "feasible", chosen);
+  }
+
+  // payload: { club, required, requirements (dump format), options }
+  function handleSolvePoints(highs, payload) {
+    const { players, links } = clubFromDump(payload.club);
+    const o = payload.options || {};
+    return solvePoints(highs, players, links, costOptions(o), solveOptions(o), {
+      required: Number(payload.required) || 0,
+      requirements: requirementsFromDump(payload.requirements),
+      preference: o.preference === "highToLow" ? "highToLow" : "lowToHigh",
+      maxCards: Number(o.maxCards) || 0
+    });
+  }
+
   const api = {
     K, GREATER, LOWER, EXACT, FORMATION_POSITIONS,
     playerFromItem, clubFromDump, challengeFromDump, teamLinkMap,
     costOptions, solveOptions, playerCost, exclusionReason, fodderValue,
     teamRating, ratingScaled, teamRatingBounds, chemistry, checkChallenge, checkRequirement, unsupported,
-    solve, solveSet, handleSolve, handleSolveSet, LS_TUNING
+    solve, solveSet, handleSolve, handleSolveSet, solvePoints, handleSolvePoints, LS_TUNING
   };
   root.SbcSolver = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -26,3 +26,6 @@ test/fixtures/rating-code*.json
 
 # Private planning notes
 HANDOFF.md
+
+# One-click SBC recon: contains EA method sources, keep local
+test/fixtures/sbc-oneclick-*.json
