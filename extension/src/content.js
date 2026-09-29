@@ -10,7 +10,7 @@
     allowTradeable: true, allowSpecial: false, ignoreExclusions: false, storageFirst: false,
     raresOnlyIfRequired: true, useUnassigned: true, useTransferDuplicates: true, keepSquadPlayers: false,
     solveMultiple: false, solveTimes: 2, ratingMin: 45, ratingMax: 99, specialRatingMin: 45, specialRatingMax: 99,
-    solveUsing: "price", scope: "challenge", excludeActiveSquad: true, pointsPreference: "lowToHigh"
+    solveUsing: "price", scope: "challenge", excludeActiveSquad: true, pointsMaxCards: 30
   };
   // Options shown for gallery-score ("One Click") SBCs.
   const POINTS_TOGGLES = new Set(["useConcept", "allowTradeable", "allowSpecial", "excludeActiveSquad", "ignoreExclusions", "storageFirst"]);
@@ -232,6 +232,20 @@
   #sbcs-modal .orange .orow{border:0;cursor:default;justify-content:flex-start}
   #sbcs-modal .olabel{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#9aa6b8}
   #sbcs-modal input[type=number]{width:70px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:8px;padding:5px 8px;font:inherit}
+  #sbcs-modal .rs{position:relative;height:26px;margin:4px 8px 0}
+  #sbcs-modal .rs-track{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:4px;background:#3a4454}
+  #sbcs-modal .rs-fill{position:absolute;top:11px;height:4px;border-radius:4px;background:#27b36a}
+  #sbcs-modal input.rs-in{-webkit-appearance:none!important;appearance:none!important;position:absolute!important;left:0;top:0;
+    width:100%!important;height:26px!important;margin:0!important;padding:0!important;background:transparent!important;
+    border:0!important;box-shadow:none!important;pointer-events:none;outline:none;opacity:1!important}
+  #sbcs-modal input.rs-in::-webkit-slider-runnable-track{-webkit-appearance:none;background:transparent;height:26px;border:0}
+  #sbcs-modal input.rs-in::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;margin-top:4px;
+    border-radius:50%;background:#fff;border:3px solid #27b36a;cursor:grab;box-shadow:0 1px 3px #0009}
+  #sbcs-modal input.rs-in::-moz-range-track{background:transparent;border:0}
+  #sbcs-modal input.rs-in::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:#fff;
+    border:3px solid #27b36a;cursor:grab}
+  #sbcs-modal .rs-val{color:#fff;font-weight:700;margin-left:6px;letter-spacing:0}
+  #sbcs-modal .hint{color:#9aa6b8;font-size:12px}
   #sbcs-modal select{background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:8px;padding:7px 8px;font:inherit}
   #sbcs-modal .saved{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;margin-bottom:6px;
     border-radius:8px;background:#27b36a1f;color:#bff5d6}
@@ -290,6 +304,45 @@
       tradeIcon, store, price
     );
     return row;
+  }
+
+  // Slider drawn by us (the page restyles native range inputs). values: [v] or [lo, hi].
+  // onInput(values) while dragging, onChange(values) when released.
+  function rangeSlider({ min, max, values, onInput, onChange }) {
+    const box = el("div", "rs");
+    const track = el("div", "rs-track");
+    const fill = el("div", "rs-fill");
+    box.append(track, fill);
+    const inputs = values.map((v) => {
+      const input = el("input", "rs-in");
+      Object.assign(input, { type: "range", min, max, step: 1, value: v });
+      box.append(input);
+      return input;
+    });
+    const read = () => inputs.map((i) => Number(i.value));
+    const paint = () => {
+      const vals = read();
+      const pct = (v) => ((v - min) / Math.max(1, max - min)) * 100;
+      const lo = vals.length === 2 ? pct(vals[0]) : 0;
+      const hi = pct(vals[vals.length - 1]);
+      fill.style.left = `${lo}%`;
+      fill.style.width = `${Math.max(0, hi - lo)}%`;
+      // Both handles at the top end: keep the low one grabbable.
+      if (inputs.length === 2) inputs[0].style.zIndex = vals[0] > (min + max) / 2 ? "3" : "1";
+    };
+    inputs.forEach((input, k) => {
+      input.addEventListener("input", () => {
+        if (inputs.length === 2) {
+          const [lo, hi] = read();
+          if (lo > hi) inputs[k].value = k === 0 ? hi : lo; // handles can't cross
+        }
+        paint();
+        onInput?.(read());
+      });
+      input.addEventListener("change", () => onChange?.(read()));
+    });
+    paint();
+    return box;
   }
 
   // Small dialog with custom body (the auto-complete options). Returns { close }.
@@ -951,7 +1004,6 @@
         specialRatingMax: a.specialRatingMax,
         solveUsing: a.solveUsing,
         excludeActiveSquad: a.excludeActiveSquad,
-        preference: a.pointsPreference,
         ...extra
       };
     }
@@ -1057,9 +1109,21 @@
             club: input.club,
             required: input.required,
             requirements: input.requirements,
-            options: solverOptions({ timeLimitS: settings.timeLimitS, maxCards: input.selectionLimit })
+            // Cheapest within the card cap. "Only use rares if required" doesn't apply here: its
+            // per-card penalty would make one high-rated card beat many cheap rares.
+            options: solverOptions({
+              timeLimitS: settings.timeLimitS,
+              maxCards: Math.min(input.selectionLimit || 30, settings.auto.pointsMaxCards || 30),
+              solveUsing: "price",
+              preference: "lowToHigh",
+              raresOnlyIfRequired: false
+            })
           }
         });
+        const cap = Math.min(input.selectionLimit || 30, settings.auto.pointsMaxCards || 30);
+        if (!res.players.length && res.status === "infeasible" && cap < (input.selectionLimit || 30)) {
+          return showDone(`${fmt(input.required)} points can't be reached with at most ${cap} cards. Raise Max cards in Auto Complete.`, "warn");
+        }
         if (!res.players.length) return showNoSolution(res.status, res.unsupported);
         const details = await request("describePlayers", { args: { ids: res.players.map((p) => p.playerId) }, timeoutMs: 5000 });
         showBusy("Waiting for you to confirm…");
@@ -1169,26 +1233,22 @@
       };
       const rangeRow = (label, minKey, maxKey) => {
         const box = el("div", "orange");
-        box.append(el("div", "olabel", label));
-        const line = el("div", "orow");
-        const num = (key) => {
-          const input = el("input");
-          Object.assign(input, { type: "number", min: 45, max: 99, step: 1, value: a[key] });
-          input.addEventListener("change", () => {
-            const v = Math.min(99, Math.max(45, Number(input.value) || a[key]));
-            a[key] = v;
-            input.value = v;
-            if (a[minKey] > a[maxKey]) {
-              [a[minKey], a[maxKey]] = [a[maxKey], a[minKey]];
-              box.querySelectorAll("input")[0].value = a[minKey];
-              box.querySelectorAll("input")[1].value = a[maxKey];
-            }
+        const head = el("div", "olabel", label);
+        const val = el("span", "rs-val");
+        const show = ([lo, hi]) => (val.textContent = `${lo} – ${hi}`);
+        head.append(val);
+        const lo = Math.max(45, Math.min(99, a[minKey] ?? 45));
+        const hi = Math.max(lo, Math.min(99, a[maxKey] ?? 99));
+        show([lo, hi]);
+        box.append(head, rangeSlider({
+          min: 45, max: 99, values: [lo, hi],
+          onInput: show,
+          onChange: ([l, h]) => {
+            a[minKey] = l;
+            a[maxKey] = h;
             save();
-          });
-          return input;
-        };
-        line.append(el("span", "", "Min"), num(minKey), el("span", "", "Max"), num(maxKey));
-        box.append(line);
+          }
+        }));
         return box;
       };
 
@@ -1200,27 +1260,24 @@
           if (POINTS_TOGGLES.has(key)) body.append(toggleRow(key, label, tip, key === "useConcept"));
         }
         body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
-        const selectRow = (label, key, choices) => {
-          const box = el("div", "orange");
-          box.append(el("div", "olabel", label));
-          const sel = el("select");
-          for (const [v, t] of choices) {
-            const o = el("option", "", t);
-            o.value = v;
-            sel.append(o);
-          }
-          sel.value = a[key];
-          sel.addEventListener("change", () => {
-            a[key] = sel.value;
+        // Max cards: the cheapest selection that reaches the target using at most this many.
+        const limit = Math.max(1, ctx.pointsLimit || 30);
+        const maxBox = el("div", "orange");
+        const maxLabel = el("div", "olabel", "Max cards");
+        const maxVal = el("span", "rs-val");
+        const showMax = ([v]) => (maxVal.textContent = `${v} of ${limit}`);
+        maxLabel.append(maxVal);
+        const start = Math.min(limit, a.pointsMaxCards || limit);
+        showMax([start]);
+        maxBox.append(maxLabel, rangeSlider({
+          min: 1, max: limit, values: [start],
+          onInput: showMax,
+          onChange: ([v]) => {
+            a.pointsMaxCards = v;
             save();
-          });
-          box.append(sel);
-          return box;
-        };
-        body.append(
-          selectRow("Solve using", "solveUsing", [["price", "Price (cheapest cards)"], ["rating", "Rating (lowest-rated cards)"]]),
-          selectRow("Preference", "pointsPreference", [["lowToHigh", "Low to high (more, cheaper cards)"], ["highToLow", "High to low (fewest cards)"]])
-        );
+          }
+        }), el("div", "hint", "Fewer cards means higher-rated ones. Use the rating range to keep cards you want."));
+        body.append(maxBox);
         openDialog({
           title: ctx.challengeName || "Gallery SBC",
           subtitle: "Pick cards whose gallery points reach the target.",

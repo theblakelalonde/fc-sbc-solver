@@ -300,3 +300,14 @@ test("attribute requirement: 'OVR Max: 83' = {40: [83], 41: [1]}; other attribut
   assert.equal(S.handleSolvePoints(highs, { club, required: 1250, requirements: [dto("Pace Min: 80", GREATER, 80, 2)], options: {} }).status, "unsupported");
   assert.equal(S.handleSolvePoints(highs, { club, required: 1250, requirements: [dto("Pace Min: 80", GREATER, 80, 1)], options: {} }).status, "unsupported");
 });
+
+test("gallery points: Max cards caps the selection; the rare penalty isn't used", () => {
+  const club = fixture("club-2026-09-29T00-09-24-043Z.json");
+  const solveMax = (maxCards) => S.handleSolvePoints(highs, { club, required: 4100, requirements: [],
+    options: { excludeActiveSquad: false, raresOnlyIfRequired: false, maxCards } });
+  const wide = solveMax(30);
+  const one = solveMax(1);
+  assert.ok(wide.players.length > 1 && wide.squadValue <= one.squadValue, "more cards allowed: never pricier");
+  assert.equal(one.players.length, 1);
+  assert.ok(one.score >= 4100);
+});

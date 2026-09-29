@@ -1705,7 +1705,8 @@
         challengeName: challenge.name,
         pointsRequired: Number(challenge.scoreRequirement) || 0,
         pointsSubmitted: Number(challenge.submittedScore) || 0,
-        pointsSelected: Number(callIfFn(vm, "getSelectedScore")) || 0
+        pointsSelected: Number(callIfFn(vm, "getSelectedScore")) || 0,
+        pointsLimit: Number(callIfFn(vm, "getSelectionLimit")) || 30
       };
     }
     if (onHubScreen()) {
