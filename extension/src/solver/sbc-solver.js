@@ -83,6 +83,8 @@
       inEvolution: !!pr.isActiveInTimedEvolution,
       inUnassigned: pile === "unassigned",
       inTransfer: pile === "transfer",
+      // Concept player: a card you don't own (EA's concept search), placed to show what to buy.
+      concept: pile === "concept" || f.concept === true,
       inActiveSquad: false
     };
   }
@@ -119,10 +121,11 @@
     players = players.concat((data.storage || []).filter(Boolean).map((i) => playerFromItem(i, { inStorage: true })));
     players = players.concat((data.unassigned || []).filter(Boolean).map((i) => playerFromItem(i, { pile: "unassigned" })));
     players = players.concat((data.transferDuplicates || []).filter(Boolean).map((i) => playerFromItem(i, { pile: "transfer" })));
+    players = players.concat((data.concept || []).filter(Boolean).map((i) => playerFromItem(i, { pile: "concept" })));
     const active = new Set(((data.activeSquad || {}).ids || []).map(Number));
     if (active.size) players = players.map((p) => (active.has(p.id) ? { ...p, inActiveSquad: true } : p));
     players = borrowMissingPrices(players);
-    const curve = ratingPriceCurve(players.filter((p) => !p.special && !p.inStorage).map((p) => [p.rating, p.marketPrice]));
+    const curve = ratingPriceCurve(players.filter((p) => !p.special && !p.inStorage && !p.concept).map((p) => [p.rating, p.marketPrice]));
     players = players.map((p) => (p.marketPrice > 0 ? p : { ...p, ratingEstimate: curve(p.rating) }));
     return { players, links: teamLinkMap(data.teamLinks || []) };
   }
@@ -274,8 +277,13 @@
     };
   }
 
+  // Buying a card: its full (estimated) price plus a flat extra, so cards you own are used first and
+  // concept cards only fill what's missing (unless an owned card is worth more than about this much).
+  const CONCEPT_EXTRA = 5000;
+
   function playerCost(p, opts) {
     if (opts.overrides.has(p.id)) return Math.max(0, Math.round(opts.overrides.get(p.id)));
+    if (p.concept) return Math.round((p.marketPrice > 0 ? p.marketPrice : fodderValue(p)) + CONCEPT_EXTRA);
     let value = p.marketPrice > 0 ? p.marketPrice : fodderValue(p);
     if (p.inStorage) value *= opts.storageFirst ? STORAGE_FIRST_FACTOR : opts.storageFactor;
     else if (!p.tradable) value *= opts.untradeableFactor;
@@ -292,7 +300,7 @@
     if (p.inTransfer && !opts.useTransferDuplicates) return "transfer list";
     if (opts.overrides.has(p.id)) return null;
     if (p.special && !opts.allowSpecial) return "special";
-    if (p.tradable && !opts.allowTradeable) return "tradeable";
+    if (p.tradable && !opts.allowTradeable && !p.concept) return "tradeable";
     const [lo, hi] = p.special ? [opts.specialRatingMin, opts.specialRatingMax] : [opts.ratingMin, opts.ratingMax];
     if (p.rating < lo || p.rating > hi) return "rating range";
     if (opts.ignoreExclusions) return null;
@@ -513,6 +521,10 @@
 
   const COST_SCALE = 1200; // cost dominates; ratings (and position) only break ties
   const RATING_SCALE = 1e6; // "solve using rating"
+  // "Solve using rating" with concept players: a card to buy counts as this many OVR higher, so
+  // owned cards come first there too (the +CONCEPT_EXTRA coins only steers "price").
+  const CONCEPT_RATING_EXTRA = 20;
+  const ratingKey = (p) => p.rating + (p.concept ? CONCEPT_RATING_EXTRA : 0);
   const OOP_PENALTY = 10;
   const BIG = SQUAD_SIZE * MAX_RATING; // 1089
 
@@ -554,7 +566,7 @@
 
       pool.forEach((p, i) => {
         const w = this.objective === "rating"
-          ? p.rating * RATING_SCALE + Math.min(this.costs.get(p.id), RATING_SCALE - 1)
+          ? ratingKey(p) * RATING_SCALE + Math.min(this.costs.get(p.id), RATING_SCALE - 1)
           : this.costs.get(p.id) * COST_SCALE + p.rating;
         this.objTerms.push([w + OOP_PENALTY, y[i]]);
       });
@@ -937,7 +949,7 @@
     const rnd = mulberry32(seed);
     const started = now();
     const weight = (p) => (objective === "rating"
-      ? p.rating * RATING_SCALE + Math.min(costs.get(p.id), RATING_SCALE - 1)
+      ? ratingKey(p) * RATING_SCALE + Math.min(costs.get(p.id), RATING_SCALE - 1)
       : costs.get(p.id) * COST_SCALE + p.rating);
     const specs = items.map(({ ch, fixed }) => ({
       ch,
@@ -1205,7 +1217,7 @@
     const started = now();
     const n = ch.slots.filter(isOpen).length;
     const weight = (p) => (opts.objective === "rating"
-      ? p.rating * RATING_SCALE + Math.min(costs.get(p.id), RATING_SCALE - 1)
+      ? ratingKey(p) * RATING_SCALE + Math.min(costs.get(p.id), RATING_SCALE - 1)
       : costs.get(p.id) * COST_SCALE + p.rating);
     // lb[k][s]: least weight of k pool players with rating sum s (0/1 knapsack with a count).
     const maxSum = n * MAX_RATING;
@@ -1268,7 +1280,8 @@
         marketPrice: badgePrice(p),
         tradable: p.tradable,
         inPosition: inPosition(p, bySlot.get(i)),
-        chemistry: chem.perSlot.get(i)
+        chemistry: chem.perSlot.get(i),
+        concept: p.concept || undefined
       })),
       totalCost: entries.reduce((a, [, p]) => a + costs.get(p.id), 0),
       squadValue: entries.reduce((a, [, p]) => a + badgePrice(p), 0),
@@ -1563,6 +1576,67 @@
     return { challenge: { name: `set of ${challenges.length}` }, ...result };
   }
 
+  // ---------- concept players: which EA concept searches to run ----------
+  // A handful of targeted searches (EA's searchConceptItems, 20 cards each): the SBC's named
+  // nations/leagues/clubs, the leagues/nations your own cards share (for links and counts), and the
+  // cheapest cards in the needed quality/OVR band. Returns [{ nation, league, club, level, ovrMin, ovrMax }].
+  const CONCEPT_MAX_QUERIES = 12;
+  const LEVEL_NAMES = { 1: "bronze", 2: "silver", 3: "gold" };
+  const TIER_OVR = { 1: [45, 64], 2: [65, 74], 3: [75, 99] };
+
+  function conceptQueries(challenges, players, costOpts) {
+    const queries = [];
+    const seen = new Set();
+    const add = (q) => {
+      const key = JSON.stringify(q);
+      if (!seen.has(key) && queries.length < CONCEPT_MAX_QUERIES) {
+        seen.add(key);
+        queries.push(q);
+      }
+    };
+    for (const ch of challenges) {
+      const reqs = ch.requirements || [];
+      let tier = null;
+      let [lo, hi] = [costOpts.ratingMin || 45, costOpts.ratingMax || 99];
+      for (const r of reqs) {
+        const v = r.values[0];
+        if ((r.key === K.PLAYER_QUALITY || r.key === K.PLAYER_LEVEL) && (r.scope === EXACT || r.count >= 0 || r.key === K.PLAYER_LEVEL)) tier = v;
+        else if (r.key === K.PLAYER_QUALITY && r.scope === GREATER) tier = Math.max(tier ?? 0, v) || null;
+        if (r.key === K.PLAYER_MIN_OVR || (r.key === K.PLAYER_ATTRIBUTE && r.attribute === 1 && r.scope === GREATER)) lo = Math.max(lo, v);
+        if (r.key === K.PLAYER_MAX_OVR || (r.key === K.PLAYER_ATTRIBUTE && r.attribute === 1 && r.scope === LOWER)) hi = Math.min(hi, v);
+        if (r.key === K.PLAYER_EXACT_OVR) [lo, hi] = [v, v];
+      }
+      if (tier && TIER_OVR[tier]) [lo, hi] = [Math.max(lo, TIER_OVR[tier][0]), Math.min(hi, TIER_OVR[tier][1])];
+      const level = tier ? LEVEL_NAMES[tier] : "any";
+      const band = { level, ovrMin: lo, ovrMax: hi };
+      for (const r of reqs) {
+        const field = r.key === K.NATION_ID ? "nation" : r.key === K.LEAGUE_ID ? "league" : r.key === K.CLUB_ID ? "club" : null;
+        if (field) for (const id of r.values) add({ ...band, [field]: id });
+      }
+      // A team-rating target needs cards near it as well as the cheapest ones.
+      const target = reqs.find((r) => r.key === K.TEAM_RATING && r.scope !== LOWER)?.values[0];
+      if (target) add({ ...band, ovrMin: Math.max(lo, target - 2), ovrMax: Math.min(hi, target + 3) });
+      add(band);
+      // Links / counts: the leagues and nations most of your usable cards already share.
+      const needsLinks = reqs.some((r) => [K.CHEMISTRY_POINTS, K.ALL_PLAYERS_CHEMISTRY_POINTS, K.SAME_NATION_COUNT,
+        K.SAME_LEAGUE_COUNT, K.SAME_CLUB_COUNT, K.NATION_COUNT, K.LEAGUE_COUNT, K.CLUB_COUNT].includes(r.key));
+      if (needsLinks) {
+        const owned = players.filter((p) => !p.concept && !exclusionReason(p, costOpts));
+        const top = (key) => [...owned.reduce((m, p) => m.set(p[key], (m.get(p[key]) || 0) + 1), new Map())]
+          .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id).filter((id) => id > 0);
+        for (const league of top("leagueId")) add({ ...band, league });
+        for (const nation of top("nationId")) add({ ...band, nation });
+      }
+    }
+    return queries;
+  }
+
+  // payload: { club, sbcs, options } -> { queries }
+  function handleConceptQueries(highs, payload) {
+    const { players } = clubFromDump(payload.club);
+    return { queries: conceptQueries((payload.sbcs || []).map(challengeFromDump), players, costOptions(payload.options || {})) };
+  }
+
   // ---------- gallery-score SBCs ("One Click SBC", Sept 2026 Web App update) ----------
   // Pick club cards whose FUT Gallery scores (sbsScore) add up to at least `required`. Per-card
   // requirements (e.g. OVR Min. 45) filter the pool; anything else is reported as unsupported.
@@ -1628,7 +1702,7 @@
     playerFromItem, clubFromDump, challengeFromDump, teamLinkMap,
     costOptions, solveOptions, playerCost, exclusionReason, fodderValue,
     teamRating, ratingScaled, teamRatingBounds, chemistry, checkChallenge, checkRequirement, unsupported,
-    solve, solveSet, handleSolve, handleSolveSet, solvePoints, handleSolvePoints, LS_TUNING
+    solve, solveSet, handleSolve, handleSolveSet, solvePoints, handleSolvePoints, conceptQueries, handleConceptQueries, LS_TUNING
   };
   root.SbcSolver = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -198,6 +198,7 @@
   #sbcs-modal .row{display:grid;grid-template-columns:26px 34px minmax(120px,1fr) 26px 26px 26px 22px 22px 80px;
     align-items:center;gap:8px;padding:5px 12px;border-top:1px solid #ffffff0d}
   #sbcs-modal .row:nth-child(odd){background:#ffffff05}
+  #sbcs-modal .buy{color:#ffc857;border:1px solid #ffc85766;border-radius:6px;padding:0 5px;margin-left:8px;font-size:11px;font-weight:700}
   #sbcs-modal .gal{color:#8ce6d6;font-weight:700;margin-left:8px;font-size:12px}
   #sbcs-modal .ovr{font-weight:700;text-align:center}
   #sbcs-modal .nm2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -295,9 +296,10 @@
     if (p.tradable) tradeIcon.title = "Tradeable (could be sold)";
     const store = p.storage ? svg(STORAGE_SVG, "From SBC storage") : el("span");
     const price = el("div", "price");
-    price.append(document.createTextNode(p.price ? fmt(p.price) : "–"), el("span", "coin"));
+    price.append(document.createTextNode(p.price ? `${p.concept ? "≈" : ""}${fmt(p.price)}` : "–"), el("span", "coin"));
     const nameCell = el("div", "nm2", p.name || "?");
     if (p.galleryScore) nameCell.append(el("span", "gal", `◆ ${fmt(p.galleryScore)}`));
+    if (p.concept) nameCell.append(el("span", "buy", "to buy"));
     row.append(
       chip, el("div", "ovr", String(p.rating ?? "")), nameCell,
       imgOrBlank(p.img?.league, "League"), imgOrBlank(p.img?.club, "Club"), imgOrBlank(p.img?.nation, "Nation"),
@@ -390,7 +392,7 @@
   // sections: [{ id, name, players: [details] }]. Resolves with { ids, submit } for the squads left
   // toggled on ("Complete" = fill and submit, the default; "Fill only" = place them), or null if
   // cancelled.
-  function showPreview({ title, subtitle, notes, sections, confirmLabel = "Complete", fillLabel = "Fill only", actions = true, showCount = true }) {
+  function showPreview({ title, subtitle, notes, sections, confirmLabel = "Complete", fillLabel = "Fill only", actions = true, showCount = true, canSubmit = true }) {
     return new Promise((resolve) => {
       if (!document.getElementById("sbcs-modal-style")) {
         const st = el("style");
@@ -465,7 +467,11 @@
       go.addEventListener("click", () => close({ ids: picked(), submit: true }));
       fillOnly.addEventListener("click", () => close({ ids: picked(), submit: false }));
       document.addEventListener("keydown", onKey, true);
-      if (actions) foot.append(sum, cancel, fillOnly, go);
+      if (actions && !canSubmit) {
+        fillOnly.className = "go";
+        fillOnly.title = "Concept players have to be bought first, so these squads are filled, not submitted.";
+        foot.append(sum, cancel, fillOnly);
+      } else if (actions) foot.append(sum, cancel, fillOnly, go);
       else {
         cancel.textContent = "Close";
         foot.append(sum, cancel);
@@ -474,7 +480,7 @@
       overlay.append(dlg);
       document.body.append(overlay);
       refresh();
-      (actions ? go : cancel).focus();
+      (actions ? (canSubmit ? go : fillOnly) : cancel).focus();
     });
   }
 
@@ -672,6 +678,7 @@
       addDump("Dump all SBCs", "dumpAllSbcs", "sbc-all");
       addDump("Rating code", "ratingCode", "rating-code");
       addDump("Gallery probe", "galleryProbe", "gallery-probe");
+      addDump("Concept probe", "conceptProbe", "concept-probe");
       dev.append(devRow);
       d.append(dev);
       return d;
@@ -1013,12 +1020,32 @@
       const keep = {};
       for (const slot of sbc?.squad?.slots || []) {
         const type = slot.requirement?.playerType || "DEFAULT";
-        if (type === "DEFAULT" && slot.item?.fields?.id > 0) keep[slot.i] = slot.item.fields.id;
+        // Concept cards are placeholders for cards to buy: never kept, re-solved every time.
+        if (type === "DEFAULT" && slot.item?.fields?.id > 0 && slot.item.fields.concept !== true) keep[slot.i] = slot.item.fields.id;
       }
       return keep;
     }
 
     const planOf = (sol) => sol.slots.map((x) => ({ slotIndex: x.slotIndex, playerId: x.playerId }));
+
+    // "Use Concept Players": the solver plans a few targeted searches, the page runs them through
+    // EA's concept search, and the cards found join the pool (priced by estimate, full price).
+    async function withConcepts(club, sbcs) {
+      if (!settings.auto.useConcept) return club;
+      showBusy("Planning concept player searches…");
+      const { queries } = await toBackground({ type: "conceptQueries", payload: { club, sbcs, options: solverOptions() } });
+      if (!queries?.length) return club;
+      const found = await request("conceptCandidates", { onProgress: showBusy, args: { queries } });
+      return { ...club, concept: found.items || [] };
+    }
+
+    // Concept cards in a solution: what's left to buy.
+    function conceptNote(slots) {
+      const buy = (slots || []).filter((x) => x.concept);
+      if (!buy.length) return null;
+      const coins = buy.reduce((a, x) => a + (x.marketPrice || 0), 0);
+      return el("div", "warn", `🛒 ${buy.length} concept player${buy.length > 1 ? "s" : ""} to buy (≈${fmt(coins)}). Buy them, then submit.`);
+    }
 
     // Shown when "Exclude Active Squad Players" is on but the page couldn't read that squad.
     function activeSquadWarning(club) {
@@ -1040,6 +1067,7 @@
       try {
         showBusy("Reading your club…");
         const input = await request("solveInput", { onProgress: showBusy });
+        input.club = await withConcepts(input.club, [input.sbc]);
         const id = input.sbc.challenge.id;
         // Same challenge N times, each copy with its own id, solved like a set (no player reused).
         const copies = Array.from({ length: times }, (_, k) => ({
@@ -1064,8 +1092,9 @@
           sections: solved.map((c) => ({
             id: c.challengeId,
             name: c.name,
-            players: c.solution.slots.map((x) => ({ name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, ...(details[x.playerId] || {}) }))
-          }))
+            players: c.solution.slots.map((x) => ({ name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, concept: x.concept, ...(details[x.playerId] || {}) }))
+          })),
+          canSubmit: !solved.some((c) => c.solution.slots.some((x) => x.concept))
         });
         if (!choice) return showDone("Cancelled. Nothing was changed.");
         const queue = choice.ids.map((cid) => solved.find((c) => c.challengeId === cid)).map((c) => ({ plan: planOf(c.solution), sol: c.solution }));
@@ -1193,7 +1222,7 @@
     // ---------- the "Auto Complete" options dialog (opened from the app's sidebar) ----------
 
     const AUTO_TOGGLES = [
-      ["useConcept", "Use Concept Players", "Not available: concept players are cards you'd have to buy, and pricing them needs outside market data."],
+      ["useConcept", "Use Concept Players", "Fill the slots your club can't cover with concept players: cards you'd buy (EA's concept search), priced by estimate. Squads with them are filled, never submitted."],
       ["allowTradeable", "Allow Tradeable Players", "Off: only untradeable cards are used."],
       ["allowSpecial", "Allow Special Players", "Special cards (TOTW, promos, icons…)."],
       ["excludeActiveSquad", "Exclude Active Squad Players", "Never use players from your active squad (starters, subs and reserves)."],
@@ -1257,7 +1286,7 @@
         const need = Math.max(0, (ctx.pointsRequired ?? 0) - (ctx.pointsSubmitted ?? 0));
         body.append(el("div", "olabel", `${fmt(ctx.pointsSubmitted ?? 0)} of ${fmt(ctx.pointsRequired ?? 0)} points submitted. ${fmt(need)} to go.`));
         for (const [key, label, tip] of AUTO_TOGGLES) {
-          if (POINTS_TOGGLES.has(key)) body.append(toggleRow(key, label, tip, key === "useConcept"));
+          if (POINTS_TOGGLES.has(key)) body.append(toggleRow(key, key === "useConcept" ? "Use Concept Players" : label, key === "useConcept" ? "Gallery SBCs take only cards you own." : tip, key === "useConcept"));
         }
         body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
         // Max cards: the cheapest selection that reaches the target using at most this many.
@@ -1299,7 +1328,7 @@
         );
         body.append(saved);
       }
-      for (const [key, label, tip] of AUTO_TOGGLES) body.append(toggleRow(key, label, tip, key === "useConcept"));
+      for (const [key, label, tip] of AUTO_TOGGLES) body.append(toggleRow(key, label, tip));
 
       // Solve multiple times (repeatable SBCs only)
       const multi = el("div", "orow");
@@ -1400,6 +1429,7 @@
       try {
         showBusy("Reading your club…");
         const input = await request("solveInput", { onProgress: showBusy });
+        input.club = await withConcepts(input.club, [input.sbc]);
         showBusy(`Finding the cheapest squad (up to ${settings.timeLimitS}s)…`);
         const res = await toBackground({
           type: "solve",
@@ -1504,6 +1534,8 @@
         tradeableNote(sol.slots),
         el("div", "muted", `Solved in ${stats?.wallTimeS ?? "?"}s`)
       );
+      const buy = conceptNote(sol.slots);
+      if (buy) card.append(buy);
       const note = mismatchNote(sol, app);
       if (note) card.append(note);
       card.append(undoButton());
@@ -1520,6 +1552,7 @@
       try {
         showBusy("Loading the set's challenges…");
         const input = await request("setInput", { onProgress: showBusy });
+        input.club = await withConcepts(input.club, input.sbcs);
         const n = input.sbcs.length;
         const budget = Math.min(60, settings.timeLimitS * n); // a cap: usually finishes sooner
         showBusy(`Solving ${n} challenges together, no player used twice (up to ${budget}s)…`);
@@ -1555,9 +1588,10 @@
             id: c.challengeId,
             name: c.name,
             players: c.solution.slots.map((x) => ({
-              name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, ...(details[x.playerId] || {})
+              name: x.name, rating: x.rating, price: x.marketPrice, tradable: x.tradable, concept: x.concept, ...(details[x.playerId] || {})
             }))
-          }))
+          })),
+          canSubmit: !solvable.some((c) => c.solution.slots.some((x) => x.concept))
         });
         if (!choice) return showDone("Cancelled. Nothing was changed.");
         const chosen = solvable.filter((c) => choice.ids.includes(c.challengeId));
@@ -1579,6 +1613,8 @@
             ? `Filled ${chosen.length} of ${n} challenges (the rest are listed below). Open each filled one and press Submit.`
             : `All ${n} challenges filled. Open each one and press Submit.`, failed || skipped ? "warn" : "ok");
         result.append(setCard(res, fill.results));
+        const buyAll = conceptNote(chosen.flatMap((c) => c.solution.slots));
+        if (buyAll) result.append(buyAll);
       } catch (e) {
         showDone(e.message, "bad");
       } finally {

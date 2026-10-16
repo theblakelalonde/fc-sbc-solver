@@ -196,3 +196,10 @@ CONFIRMED from the method-source dumps (2026-09-29):
 - After selecting, the work-area controller's `_refreshSelectionControls()` updates the counts and the progress bar; the view's `setItemSelected(item, true)` ticks a visible tile.
 - Review Selection pushes `UTOneClickSBCReviewViewController` (or a squad-conflict popup first when selected cards are in squads). Submission: `services.SBC.submitOneClickChallenge(challenge, set, itemIds)`; response data has `challengeCompleted`, `setCompleted`, `submittedScore`, awards; HTTP 409 with `squads` = squad conflict (nothing submitted). `initiateOneClickChallenge(challenge)` starts a not-started one.
 - Requirement "OVR Max: 83" is one DTO with `{40: [83], 41: [1]}`, scope max: key 41 names the attribute (1 = OVR), key 40 holds the value.
+
+## Concept players — CONFIRMED (concept probe, 2026-10-01)
+
+- A concept card placed in an SBC squad is a normal item entity with `concept: true`; its `id` equals its `definitionId` (no owned item id). EA gives it **no market average** (`getMarketAverage()` = -1) and shows none in Player Details.
+- Search: `services.Item.searchConceptItems(criteria)` with a `UTSearchCriteriaDTO` (fields incl. `nation`, `league`, `club`, `level`, `ovrMin`, `ovrMax`, `count`, `offset`, `sortBy`, plus `type`/`sort` accessors).
+- EA saves SBC squads containing concept cards; they can't be submitted until bought.
+- The extension prices concept cards with its own rating-based estimate (no outside data, no market searches) and never submits squads containing them.

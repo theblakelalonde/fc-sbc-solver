@@ -871,7 +871,8 @@
 
   function itemsById() {
     const byId = new Map();
-    [...clubCache(), ...storageCache(), ...(sessionMemo.storage || []), ...unassignedPlayers(), ...transferDuplicates()]
+    // Concept cards first, so an owned item with a colliding id always wins.
+    [...conceptCache.values(), ...clubCache(), ...storageCache(), ...(sessionMemo.storage || []), ...unassignedPlayers(), ...transferDuplicates()]
       .forEach((it) => it?.id && byId.set(it.id, it));
     return byId;
   }
@@ -1146,6 +1147,8 @@
   }
 
   async function submitOne(challenge, set, progress, label) {
+    const placed = (callIfFn(challenge.squad, "getPlayers") || []).map((sl) => callIfFn(sl, "getItem"));
+    if (placed.some(isConceptItem)) throw new Error(`${label}: it has concept players (cards to buy), so it wasn't submitted`);
     const state = squadState(challenge);
     if (state.meetsRequirements === false || state.canSubmit === false) {
       throw new Error(`${label}: the app says the squad doesn't meet the requirements, so it wasn't submitted`);
@@ -1409,6 +1412,130 @@
     if (!listed?.success || !Array.isArray(list)) throw new Error("couldn't list the set");
     const todo = list.filter((c) => callIfFn(c, "isCompleted") !== true);
     return { setId: set.id, sbcs: todo.map(serializeChallenge) };
+  }
+
+  // ---------- concept players: EA's concept search (cards you don't own) ----------
+  // Runs the solver's planned searches through services.Item.searchConceptItems, one at a time,
+  // paced. Found items are kept so a fill can place them (EA lets concept cards sit in an SBC
+  // squad; they can't be submitted until bought).
+
+  const conceptCache = new Map(); // id (= definitionId) -> concept item
+  const CONCEPT_PAUSE_MS = [700, 1300];
+
+  function conceptCriteria(q) {
+    const Criteria = g("UTSearchCriteriaDTO");
+    const c = new Criteria();
+    const set = (key, value) => {
+      if (key in c) c[key] = value;
+      else c[`_${key}`] = value;
+    };
+    set("type", "player");
+    c.level = q.level || "any";
+    c.ovrMin = q.ovrMin ?? 45;
+    c.ovrMax = q.ovrMax ?? 99;
+    if (q.nation) c.nation = q.nation;
+    if (q.league) c.league = q.league;
+    if (q.club) c.club = q.club;
+    c.count = 21;
+    c.offset = 0;
+    set("sort", "asc"); // lowest-rated first: the cheapest in the band
+    c.sortBy = "ovr";
+    return c;
+  }
+
+  async function conceptCandidates(progress, args) {
+    const item = g("services")?.Item;
+    if (typeof item?.searchConceptItems !== "function") throw new Error("services.Item.searchConceptItems missing (EA update?)");
+    const queries = Array.isArray(args?.queries) ? args.queries : [];
+    const found = new Map();
+    let failed = 0;
+    for (const [n, q] of queries.entries()) {
+      progress(`Concept player search ${n + 1} of ${queries.length} (${found.size} cards found so far)…`);
+      await sleep(jitter(CONCEPT_PAUSE_MS));
+      try {
+        const res = await observeOnce(item.searchConceptItems(conceptCriteria(q)));
+        const items = res?.response?.items || res?.data?.items || res?.items || [];
+        if (!res?.success && !items.length) failed++;
+        for (const it of items) {
+          if (!isObj(it) || it.type !== "player" || isOwned(it)) continue;
+          conceptCache.set(it.id, it);
+          found.set(it.id, it);
+        }
+      } catch {
+        failed++;
+      }
+    }
+    const items = [...found.values()].map((it) => {
+      const out = serializeItem(it, false);
+      out.fields.concept = true;
+      return out;
+    });
+    return { items, searched: queries.length, failed };
+  }
+
+  const isConceptItem = (it) => it?.concept === true;
+
+  // ---------- recon: concept players (cards you don't own, placed in an SBC squad) ----------
+  // Read-only. Captures how the app marks concept items, whether they carry an EA price, and
+  // which service methods search for them (method sources: the file stays local, see .gitignore).
+  function conceptProbe() {
+    const CONCEPT = /concept/i;
+    const services = g("services") || {};
+    const methods = [];
+    for (const [svcName, svc] of Object.entries(services)) {
+      if (!isObj(svc)) continue;
+      for (const name of protoMethods(svc)) {
+        if (!CONCEPT.test(name) && !(svcName === "Item" && /search|marketData|priceLimit/i.test(name))) continue;
+        let source = null;
+        try {
+          source = String(svc[name]).slice(0, 4000);
+        } catch {
+          /* ignore */
+        }
+        methods.push({ owner: `services.${svcName}`, name, source });
+      }
+    }
+    const classes = {};
+    for (const n of Object.getOwnPropertyNames(window)) {
+      if (!/^UT/.test(n) || !CONCEPT.test(n)) continue;
+      const cls = g(n);
+      if (typeof cls === "function") classes[n] = protoMethods(cls.prototype);
+    }
+    const Criteria = g("UTSearchCriteriaDTO");
+    let criteria = null;
+    try {
+      criteria = typeof Criteria === "function" ? snapshot(new Criteria(), 1) : null;
+    } catch {
+      /* ignore */
+    }
+    // The open SBC squad: every placed item, with what marks it as concept and its EA price.
+    const challenge = currentChallenge();
+    const slots = callIfFn(challenge?.squad, "getPlayers");
+    const items = Array.isArray(slots)
+      ? slots.slice(0, 11).map((slot, i) => {
+        const item = callIfFn(slot, "getItem");
+        if (!isObj(item) || !(Number(item.id) > 0 || Number(item.definitionId) > 0)) return { slot: i, empty: true };
+        const flags = {};
+        for (const name of protoMethods(item)) {
+          if (/^(is|has|can)/.test(name) && item[name].length === 0) {
+            const v = callIfFn(item, name);
+            if (typeof v === "boolean") flags[name] = v;
+          }
+        }
+        return {
+          slot: i,
+          name: itemName(item),
+          id: item.id,
+          definitionId: item.definitionId,
+          concept: Object.fromEntries(Object.entries(flags).filter(([k]) => CONCEPT.test(k))),
+          flags,
+          marketAverage: callIfFn(item, "getMarketAverage"),
+          owned: isOwned(item),
+          fields: serializeItem(item, true)
+        };
+      })
+      : null;
+    return { kind: "concept-probe", capturedAt: new Date().toISOString(), challenge: challenge?.name ?? null, items, methods, classes, criteria };
   }
 
   // ---------- recon: where does FC 27 keep the FUT Gallery item score? ----------
@@ -2444,8 +2571,8 @@
 
   const COMMANDS = {
     probe, dumpClub, dumpSbc, dumpAllSbcs, ratingCode, solveInput, fillSquad, undoFill,
-    setInput, fillSet, completeRepeat, completeSet, pointsInput, selectPoints, completePoints, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
-    galleryProbe, exportSlots, seedSlots
+    setInput, fillSet, completeRepeat, completeSet, pointsInput, selectPoints, completePoints, conceptCandidates, context, setPriceOverlay, describePlayers, setTileValue, seedFormations, tileInput,
+    galleryProbe, conceptProbe, exportSlots, seedSlots
   };
   const QUICK = new Set(["context", "setPriceOverlay", "describePlayers", "setTileValue", "seedFormations", "exportSlots", "seedSlots"]); // instant and read-mostly: allowed while busy
   let busy = false;

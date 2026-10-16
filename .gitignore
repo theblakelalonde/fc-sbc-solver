@@ -29,3 +29,6 @@ HANDOFF.md
 
 # One-click SBC recon: contains EA method sources, keep local
 test/fixtures/sbc-oneclick-*.json
+
+# Concept-player recon: contains EA method sources, keep local
+test/fixtures/concept-probe-*.json

@@ -311,3 +311,56 @@ test("gallery points: Max cards caps the selection; the rare penalty isn't used"
   assert.equal(one.players.length, 1);
   assert.ok(one.score >= 4100);
 });
+
+test("concept players fill only what the club can't, at full estimated price", () => {
+  const dump = fixture("club-121.json");
+  const nations = new Set(S.clubFromDump(dump).players.map((p) => p.nationId));
+  const missing = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].find((n) => !nations.has(n));
+  const ch = challenge([req(K.NATION_ID, GREATER, [missing], 1)]);
+  // Without concepts: impossible.
+  assert.equal(solve(ch, S.clubFromDump(dump).players).status, "infeasible");
+  // One concept card of that nation (a copy of a club card, re-badged): used once, the rest owned.
+  const src = dump.players.find((i) => i.fields.type === "player" && i.fields.rating < 70);
+  const concept = { ...src, fields: { ...src.fields, id: 1, definitionId: 999001, databaseId: 999001, nationId: missing, concept: true, getMarketAverage: -1 } };
+  const club = S.clubFromDump({ ...dump, concept: [concept] });
+  const r = solve(ch, club.players);
+  assertValid(r, ch);
+  const conceptSlots = r.solutions[0].slots.filter((x) => x.concept);
+  assert.equal(conceptSlots.length, 1);
+  assert.ok(conceptSlots[0].cost > 0);
+  // The planner asks EA for that nation.
+  const q = S.conceptQueries([ch], club.players, S.costOptions({}));
+  assert.ok(q.some((x) => x.nation === missing), JSON.stringify(q));
+});
+
+test("concept players: owned cards first even when concept cards are cheaper", () => {
+  const dump = fixture("club-121.json");
+  const owned = S.clubFromDump(dump).players;
+  const nations = new Set(owned.map((p) => p.nationId));
+  const missing = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].find((n) => !nations.has(n));
+  const src = dump.players.filter((i) => i.fields.type === "player").slice(0, 20);
+  // 20 cheap concept cards (estimate ~200 each) for every position, plus one of the missing nation.
+  const concept = src.map((i, k) => ({ ...i, fields: { ...i.fields, id: 10 + k, definitionId: 900000 + k, databaseId: 900000 + k,
+    rating: 50, concept: true, getMarketAverage: -1, nationId: k === 0 ? missing : i.fields.nationId } }));
+  const club = S.clubFromDump({ ...dump, concept });
+  const ch = challenge([req(K.NATION_ID, GREATER, [missing], 1)]);
+  const r = solve(ch, club.players);
+  assertValid(r, ch);
+  assert.equal(r.solutions[0].slots.filter((x) => x.concept).length, 1, "only the slot the club can't fill");
+});
+
+test("concept players: owned cards first in 'solve using rating' too", () => {
+  const dump = fixture("club-121.json");
+  const owned = S.clubFromDump(dump).players;
+  const nations = new Set(owned.map((p) => p.nationId));
+  const missing = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].find((n) => !nations.has(n));
+  const src = dump.players.filter((i) => i.fields.type === "player").slice(0, 20);
+  // Concept cards rated far below everything owned: "lowest-rated" would pick them all without the extra.
+  const concept = src.map((i, k) => ({ ...i, fields: { ...i.fields, id: 10 + k, definitionId: 900000 + k, databaseId: 900000 + k,
+    rating: 50, concept: true, getMarketAverage: -1, nationId: k === 0 ? missing : i.fields.nationId } }));
+  const club = S.clubFromDump({ ...dump, concept });
+  const ch = challenge([req(K.NATION_ID, GREATER, [missing], 1)]);
+  const r = solve(ch, club.players, {}, { solveUsing: "rating" });
+  assertValid(r, ch);
+  assert.equal(r.solutions[0].slots.filter((x) => x.concept).length, 1);
+});

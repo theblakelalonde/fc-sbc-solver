@@ -44,6 +44,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     solve: () => run(SbcSolver.handleSolve, msg.payload),
     solveSet: () => run(SbcSolver.handleSolveSet, msg.payload),
     solvePoints: () => run(SbcSolver.handleSolvePoints, msg.payload),
+    conceptQueries: () => run(SbcSolver.handleConceptQueries, msg.payload),
     health
   };
   if (!Object.prototype.hasOwnProperty.call(routes, msg.type)) return false;
