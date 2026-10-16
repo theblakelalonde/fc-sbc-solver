@@ -48,7 +48,7 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 
 Run from source: **Load unpacked** the repo's `extension/` folder. After editing files: reload the extension card, then F5 the Web App tab.
 
-**Releasing:** bump `"version"` in `extension/manifest.json`, commit, then push a matching tag (`git tag v0.9.6`, `git push origin v0.9.6`). The [release workflow](.github/workflows/release.yml) builds the zip and publishes the release.
+**Releasing:** bump `"version"` in `extension/manifest.json`, commit, then push a matching tag (`git tag v1.0.1`, `git push origin v1.0.1`). The [release workflow](.github/workflows/release.yml) builds the zip and publishes the release.
 
 Tests (Node 20+), about 90 s, using the dumps in `test/fixtures/`:
 
