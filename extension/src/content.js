@@ -1030,13 +1030,39 @@
 
     // "Use Concept Players": the solver plans a few targeted searches, the page runs them through
     // EA's concept search, and the cards found join the pool (priced by estimate, full price).
+    let conceptStats = null; // { searched, found, failed } of the last run, shown with its result
+
     async function withConcepts(club, sbcs) {
+      conceptStats = null;
       if (!settings.auto.useConcept) return club;
       showBusy("Planning concept player searches…");
       const { queries } = await toBackground({ type: "conceptQueries", payload: { club, sbcs, options: solverOptions() } });
       if (!queries?.length) return club;
-      const found = await request("conceptCandidates", { onProgress: showBusy, args: { queries } });
-      return { ...club, concept: found.items || [] };
+      const first = await request("conceptCandidates", { onProgress: showBusy, args: { queries } });
+      const items = new Map((first.items || []).map((i) => [i.fields.id, i]));
+      let searched = first.searched;
+      let failed = first.failed;
+      // Links: a block of cheap cards from one club (same club, league and nation) is what chemistry
+      // needs. Follow up on the clubs with the most cheap candidates found.
+      const band = queries.find((q) => !q.nation && !q.league && !q.club) || queries[0];
+      const asked = new Set(queries.filter((q) => q.club).map((q) => q.club));
+      const clubs = [...(first.items || []).reduce((m, i) => m.set(i.fields.teamId, (m.get(i.fields.teamId) || 0) + 1), new Map())]
+        .filter(([id]) => id > 0 && !asked.has(id)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
+      if (clubs.length) {
+        const more = await request("conceptCandidates", { onProgress: showBusy, args: { queries: clubs.map((club) => ({ ...band, nation: undefined, league: undefined, club })) } });
+        (more.items || []).forEach((i) => items.set(i.fields.id, i));
+        searched += more.searched;
+        failed += more.failed;
+      }
+      conceptStats = { searched, found: items.size, failed, status: first.lastStatus };
+      return { ...club, concept: [...items.values()] };
+    }
+
+    function conceptStatsLine() {
+      if (!conceptStats) return null;
+      const { searched, found, failed, status } = conceptStats;
+      const text = `Concept search: ${searched} searches, ${found} cards found${failed ? `, ${failed} failed${status ? ` (EA status ${status})` : ""}` : ""}.`;
+      return el("div", found ? "muted" : "warn", text);
     }
 
     // Concept cards in a solution: what's left to buy.
@@ -1464,6 +1490,8 @@
     }
 
     function showNoSolution(status, unsupported) {
+      const stats = conceptStatsLine();
+      if (stats) result.append(stats);
       if (status === "unsupported") {
         showDone("This SBC has a requirement the solver doesn't support yet.", "warn");
         const card = el("div", "card");
@@ -1473,7 +1501,8 @@
         showDone("Your club doesn't have enough players for that many squads without reusing cards.", "warn");
       } else if (status === "infeasible") {
         const cap = settings.maxCost > 0 ? ` or raise Max player value (⚙, now ${fmt(settings.maxCost)})` : "";
-        showDone(`Your club can't complete this SBC with these options. Try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete${cap}.`, "warn");
+        const withConcept = conceptStats ? " (even with the concept players found)" : "";
+        showDone(`No squad fits this SBC with these options${withConcept}. Try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete${cap}.`, "warn");
       } else {
         showDone("No squad found in time. Try a longer time limit (⚙).", "warn");
       }
@@ -1536,6 +1565,8 @@
       );
       const buy = conceptNote(sol.slots);
       if (buy) card.append(buy);
+      const searchLine = conceptStatsLine();
+      if (searchLine) card.append(searchLine);
       const note = mismatchNote(sol, app);
       if (note) card.append(note);
       card.append(undoButton());

@@ -1420,9 +1420,10 @@
   // squad; they can't be submitted until bought).
 
   const conceptCache = new Map(); // id (= definitionId) -> concept item
+  let conceptSortOk = true; // false once EA rejected our sort: use its default order from then on
   const CONCEPT_PAUSE_MS = [700, 1300];
 
-  function conceptCriteria(q) {
+  function conceptCriteria(q, plain = false) {
     const Criteria = g("UTSearchCriteriaDTO");
     const c = new Criteria();
     const set = (key, value) => {
@@ -1438,8 +1439,11 @@
     if (q.club) c.club = q.club;
     c.count = 21;
     c.offset = 0;
-    set("sort", "asc"); // lowest-rated first: the cheapest in the band
-    c.sortBy = "ovr";
+    if (!plain) {
+      // EA's own sort field ("value"; "ovr" was rejected live), ascending: cheapest first.
+      set("sort", "asc");
+      c.sortBy = "value";
+    }
     return c;
   }
 
@@ -1449,20 +1453,33 @@
     const queries = Array.isArray(args?.queries) ? args.queries : [];
     const found = new Map();
     let failed = 0;
-    for (const [n, q] of queries.entries()) {
-      progress(`Concept player search ${n + 1} of ${queries.length} (${found.size} cards found so far)…`);
+    let retried = 0;
+    let lastStatus = null;
+    const run = async (q, plain) => {
       await sleep(jitter(CONCEPT_PAUSE_MS));
       try {
-        const res = await observeOnce(item.searchConceptItems(conceptCriteria(q)));
-        const items = res?.response?.items || res?.data?.items || res?.items || [];
-        if (!res?.success && !items.length) failed++;
-        for (const it of items) {
-          if (!isObj(it) || it.type !== "player" || isOwned(it)) continue;
-          conceptCache.set(it.id, it);
-          found.set(it.id, it);
-        }
+        const res = await observeOnce(item.searchConceptItems(conceptCriteria(q, plain)));
+        lastStatus = res?.status ?? lastStatus;
+        return { ok: !!res?.success, items: res?.response?.items || res?.data?.items || res?.items || [] };
       } catch {
-        failed++;
+        return { ok: false, items: [] };
+      }
+    };
+    for (const [n, q] of queries.entries()) {
+      progress(`Concept player search ${n + 1} of ${queries.length} (${found.size} cards found so far)…`);
+      let res = await run(q, !conceptSortOk);
+      // Rejected or empty with our sort (lowest OVR first): once more with EA's default order.
+      if (conceptSortOk && (!res.ok || !res.items.length)) {
+        retried++;
+        const plain = await run(q, true);
+        if (!res.ok && plain.ok) conceptSortOk = false;
+        res = plain;
+      }
+      if (!res.ok && !res.items.length) failed++;
+      for (const it of res.items) {
+        if (!isObj(it) || it.type !== "player" || isOwned(it)) continue;
+        conceptCache.set(it.id, it);
+        found.set(it.id, it);
       }
     }
     const items = [...found.values()].map((it) => {
@@ -1470,7 +1487,7 @@
       out.fields.concept = true;
       return out;
     });
-    return { items, searched: queries.length, failed };
+    return { items, searched: queries.length, failed, retried, lastStatus };
   }
 
   const isConceptItem = (it) => it?.concept === true;
