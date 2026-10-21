@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "FC 27 SBC Solver",
-  "version": "1.0.0",
-  "description": "FC 27 SBC solver: solves inside the browser (HiGHS WebAssembly) fills SBC squads, and submits them only when you press Complete.",
+  "name": "SBC Solver for Web App",
+  "version": "1.0.1",
+  "description": "Solves SBCs in the EA SPORTS FC Ultimate Team Web App from your own club and fills the squads. Not affiliated with EA.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": [
     "storage"
   ],

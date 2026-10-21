@@ -1,4 +1,4 @@
-# FC 27 SBC Solver
+# SBC Solver for Web App
 
 <img width="1672" height="940" alt="SBC_solver" src="https://github.com/user-attachments/assets/6bd526e5-eaba-4926-8f0e-9e024039fd12" />
 
@@ -72,6 +72,10 @@ python -m venv .venv
 ```
 
 `start-solver.cmd` starts its HTTP server (old extension versions only).
+
+## Privacy
+
+Nothing leaves your browser except the Web App's own requests to EA. Details: [PRIVACY.md](PRIVACY.md). Chrome Web Store submission notes: [docs/chrome-web-store.md](docs/chrome-web-store.md).
 
 ## Credits
 

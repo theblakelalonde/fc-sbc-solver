@@ -24,18 +24,21 @@ jobs:
             exit 1
           fi
 
-      - name: Build the zip
-        # One top-level folder holding manifest.json, so "Load unpacked" points at it directly.
-        # Tests aren't needed to run the extension.
+      - name: Build the zips
+        # Release zip: one top-level folder holding manifest.json, so "Load unpacked" points at it.
+        # Store zip: manifest.json at the zip root (what the Chrome Web Store requires).
+        # Neither needs the tests or the icon generator.
         run: |
           name="fc27-sbc-solver-$GITHUB_REF_NAME"
           mkdir -p "dist/$name"
           cp -r extension/. "dist/$name/"
-          rm -rf "dist/$name/test"
+          rm -rf "dist/$name/test" "dist/$name/icons/make-icons.js"
           (cd dist && zip -r "$name.zip" "$name")
+          (cd "dist/$name" && zip -r "../$name-chrome-web-store.zip" .)
           echo "ZIP=dist/$name.zip" >> "$GITHUB_ENV"
+          echo "STORE_ZIP=dist/$name-chrome-web-store.zip" >> "$GITHUB_ENV"
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "$ZIP" --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" "$ZIP" "$STORE_ZIP" --title "$GITHUB_REF_NAME" --generate-notes

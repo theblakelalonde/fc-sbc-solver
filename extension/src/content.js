@@ -552,7 +552,7 @@
     offline.hidden = true;
     offline.append(
       el("div", "warn", "The solver didn't load."),
-      el("div", "muted", "Open chrome://extensions, press the reload button on SBC Solver, then F5 this tab."),
+      el("div", "muted", "Open chrome://extensions, press the reload button on SBC Solver for Web App, then F5 this tab."),
       button("Check again", "btn small", () => checkHealth())
     );
 
@@ -680,7 +680,8 @@
       addDump("Gallery probe", "galleryProbe", "gallery-probe");
       addDump("Concept probe", "conceptProbe", "concept-probe");
       dev.append(devRow);
-      d.append(dev);
+      // Recon dumps are for development: hidden in Chrome Web Store installs (only those get an update_url).
+      if (!chrome.runtime.getManifest().update_url) d.append(dev);
       return d;
     }
 
