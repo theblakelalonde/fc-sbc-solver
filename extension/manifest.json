@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SBC Solver for Web App",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Solves SBCs in the EA SPORTS FC Ultimate Team Web App from your own club and fills the squads. Not affiliated with EA.",
   "icons": {
     "16": "icons/icon-16.png",

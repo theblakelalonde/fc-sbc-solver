@@ -129,23 +129,27 @@
 
   const CSS = `
   #sbcs{position:fixed;left:14px;bottom:14px;z-index:2147483647;width:340px;max-width:calc(100vw - 28px);
-    background:#0d131cf2;color:#e8edf5;font:13px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;
+    background:#0d131c;color:#e8edf5;font:13px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;
     border:1px solid #ffffff1a;border-radius:14px;box-shadow:0 10px 30px #0009;overflow:hidden}
   #sbcs *{box-sizing:border-box}
   #sbcs [hidden]{display:none!important}
-  #sbcs .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none}
+  #sbcs .hd{display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;user-select:none;
+    background:linear-gradient(180deg,#2b9eeb,#1a6fa8);border-bottom:1px solid #5cb8f566;color:#fff}
   #sbcs .ttl{font-weight:700;letter-spacing:.2px;flex:1}
   #sbcs .pill{font-size:11px;padding:2px 8px;border-radius:99px;background:#ffffff12;display:flex;align-items:center;gap:5px}
+  #sbcs .hd .pill{background:#0b1f3366;color:#fff}
   #sbcs .dot{width:7px;height:7px;border-radius:50%;background:#888}
-  #sbcs .pill.on .dot{background:#3ddc84} #sbcs .pill.off .dot{background:#ff6b6b}
+  #sbcs .pill.on .dot{background:#fff;box-shadow:0 0 0 3px #ffffff33} #sbcs .pill.off .dot{background:#ff6b6b}
   #sbcs .icon{background:none;border:0;color:#aab4c3;font-size:15px;cursor:pointer;padding:2px 4px;border-radius:6px}
   #sbcs .icon:hover{background:#ffffff14;color:#fff}
-  #sbcs .bd{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+  #sbcs .hd .icon{color:#e2f1fc} #sbcs .hd .icon:hover{background:#ffffff26;color:#fff}
+  #sbcs .bd{padding:18px;display:flex;flex-direction:column;gap:12px}
+  #sbcs .bd > :empty{display:none} /* empty result area: no stray gap at the bottom */
   #sbcs.collapsed .bd{display:none}
   #sbcs .mini{display:none}
-  #sbcs.collapsed .mini:not([hidden]){display:flex;gap:8px;align-items:center;padding:0 12px 10px;color:#c9d2df;font-size:12px}
+  #sbcs.collapsed .mini:not([hidden]){display:flex;gap:10px;align-items:center;padding:14px 18px;color:#c9d2df;font-size:12px}
   #sbcs .mini > div:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-  #sbcs .ctx{background:#ffffff0d;border-radius:10px;padding:8px 10px}
+  #sbcs .ctx{background:#ffffff0d;border-radius:12px;padding:10px 12px}
   #sbcs .ctx .name{font-weight:600}
   #sbcs .muted{color:#9aa6b8;font-size:12px}
   #sbcs .btns{display:flex;flex-direction:column;gap:6px}
@@ -153,13 +157,24 @@
     font:600 13px system-ui,sans-serif;cursor:pointer;transition:filter .15s}
   #sbcs .btn:hover:not(:disabled){filter:brightness(1.2)}
   #sbcs .btn:disabled{opacity:.45;cursor:not-allowed}
-  #sbcs .btn.primary{background:linear-gradient(180deg,#27b36a,#1c8a51);border-color:#3ddc8466}
+  #sbcs .btn.primary{background:linear-gradient(180deg,#2b9eeb,#1a6fa8);color:#fff;border:1px solid #5cb8f566;box-shadow:0 4px 14px #2b9eeb33}
   #sbcs .btn.small{width:auto;padding:5px 10px;font-size:12px}
   #sbcs .status{display:flex;gap:8px;align-items:flex-start;color:#c9d2df}
-  #sbcs .spin{width:14px;height:14px;flex:none;margin-top:2px;border:2px solid #ffffff33;border-top-color:#3ddc84;
+  #sbcs .steps{display:flex;flex-direction:column;gap:2px}
+  #sbcs .step{display:flex;gap:10px;align-items:flex-start;padding:4px 0;font-size:13px;color:#e8edf5}
+  #sbcs .step i{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font:700 10px system-ui;font-style:normal;margin-top:1px}
+  #sbcs .step.done i{background:#2b9eeb;color:#fff}
+  #sbcs .step.run i{border:2px solid #ffffff2e;border-top-color:#2b9eeb;animation:sbcs-spin .8s linear infinite}
+  #sbcs .step.fail i{background:#ff6b6b;color:#fff}
+  #sbcs .step.done{color:#b7c3d3}
+  #sbcs .step .detail{color:#9aa6b8;font-size:12px;margin-top:1px}
+  #sbcs .pill.busy .dot{background:#fff;box-shadow:0 0 0 3px #ffffff40;animation:sbcs-pulse 1.2s ease-in-out infinite}
+  @keyframes sbcs-pulse{50%{opacity:.45}}
+  @media (prefers-reduced-motion: reduce){#sbcs .pill.busy .dot{animation:none}}
+  #sbcs .spin{width:14px;height:14px;flex:none;margin-top:2px;border:2px solid #ffffff33;border-top-color:#2b9eeb;
     border-radius:50%;animation:sbcs-spin .8s linear infinite}
   @keyframes sbcs-spin{to{transform:rotate(360deg)}}
-  #sbcs .card{background:#ffffff0d;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+  #sbcs .card{background:#ffffff0d;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
   #sbcs .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   #sbcs .tile{background:#0006;border-radius:8px;padding:6px;text-align:center}
   #sbcs .tile b{display:block;font-size:16px}
@@ -173,7 +188,13 @@
   #sbcs input.coins{width:100px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:6px;padding:3px 6px;font:inherit;text-align:right}
   #sbcs input.coins::placeholder{color:#9aa6b8}
   #sbcs input[type=number]{width:100px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:6px;padding:3px 6px;font:inherit}
-  #sbcs input[type=checkbox]{accent-color:#27b36a;width:15px;height:15px}
+  /* Round checkboxes: white check on blue when on */
+  #sbcs input[type=checkbox]{-webkit-appearance:none;appearance:none;width:18px;height:18px;flex:none;margin:0;border-radius:50%;
+    border:2px solid #5a6676;background:transparent center/11px no-repeat;cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease}
+  #sbcs input[type=checkbox]:hover{border-color:#8a96a8}
+  #sbcs input[type=checkbox]:checked{background-color:#2b9eeb;border-color:#2b9eeb;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 12 12%27%3E%3Cpath d=%27M2.5 6.3 5 8.7l4.6-5%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E")}
+  #sbcs input[type=checkbox]:focus-visible{outline:2px solid #5cb8f5;outline-offset:2px}
   #sbcs details summary{cursor:pointer;color:#9aa6b8;font-size:12px}
   #sbcs .dev{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   `;
@@ -215,14 +236,54 @@
   #sbcs-modal .foot .sum{flex:1;color:#c9d2df}
   #sbcs-modal button{padding:9px 16px;border-radius:10px;border:1px solid #ffffff22;background:#1c2635;color:#fff;
     font:600 13px system-ui,sans-serif;cursor:pointer}
-  #sbcs-modal button.go{background:linear-gradient(180deg,#27b36a,#1c8a51);border-color:#3ddc8466}
+  #sbcs-modal button.go{background:linear-gradient(180deg,#2b9eeb,#1a6fa8);border-color:#5cb8f566;color:#fff;box-shadow:0 4px 14px #2b9eeb33;transition:filter 120ms ease,transform 100ms ease-out}
+  #sbcs-modal button.go:hover:not(:disabled){filter:brightness(1.08)}
   #sbcs-modal button:disabled{opacity:.45;cursor:not-allowed}
   #sbcs-modal .sw{position:relative;width:38px;height:20px;flex:none}
   #sbcs-modal .sw input{opacity:0;width:0;height:0}
   #sbcs-modal .sw span{position:absolute;inset:0;border-radius:20px;background:#3a4454;cursor:pointer;transition:.15s}
   #sbcs-modal .sw span::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.15s}
-  #sbcs-modal .sw input:checked+span{background:#27b36a} #sbcs-modal .sw input:checked+span::after{left:21px}
+  #sbcs-modal .sw input:checked+span{background:#2b9eeb} #sbcs-modal .sw input:checked+span::after{left:21px}
   #sbcs-modal .dlg.narrow{width:min(440px,94vw)}
+  #sbcs-modal.centre-host{opacity:0;transition:opacity 180ms ease;padding:20px}
+  #sbcs-modal.centre-host.in{opacity:1}
+  #sbcs-modal .dlg.wide2{width:min(820px,94vw);max-height:92vh;border-radius:22px;border:1px solid #ffffff14;box-shadow:0 30px 80px #000c;
+    transform:scale(.96);transition:transform 260ms cubic-bezier(.2,.8,.2,1)}
+  #sbcs-modal.centre-host.in .dlg.wide2{transform:none}
+  #sbcs-modal .dlg.wide2 .top{display:flex;align-items:flex-start;gap:12px;padding:20px 24px 8px}
+  #sbcs-modal .dlg.wide2 .heading{flex:1;min-width:0}
+  #sbcs-modal .dlg.wide2 .top h2{font-size:21px;letter-spacing:-.02em;line-height:1.15}
+  #sbcs-modal .x{width:30px;height:30px;padding:0;border-radius:50%;border:0;background:#ffffff12;color:#b7c3d3;font-size:14px;cursor:pointer;flex:none}
+  #sbcs-modal .x:hover{background:#ffffff1f;color:#fff}
+  #sbcs-modal .dlg.wide2 .scroll{flex:1;gap:10px;padding:8px 24px 4px}
+  #sbcs-modal .dlg.wide2 .foot{border-top:0;background:transparent;padding:14px 24px 22px;gap:12px}
+  #sbcs-modal .dlg.wide2 .foot .summary{flex:1;margin:0}
+  #sbcs-modal .dlg.wide2 .foot .go{padding:12px 24px;white-space:nowrap}
+  #sbcs-modal .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+  #sbcs-modal .col{display:flex;flex-direction:column;gap:10px;min-width:0}
+  #sbcs-modal .tile{background:#ffffff06;border:1px solid #ffffff0d;border-radius:16px;padding:10px 14px 6px}
+  #sbcs-modal .tile h4{margin:0 0 2px;font-size:12px;font-weight:650;color:#b7c3d3;letter-spacing:.01em}
+  #sbcs-modal .tile .orow{border:0;padding:6px 0}
+  #sbcs-modal .tile .orange{padding:4px 0}
+  #sbcs-modal .tile .segc{margin:2px 0 8px}
+  #sbcs-modal .otxt{display:flex;flex-direction:column;min-width:0}
+  #sbcs-modal .otxt small{color:#7d8a9c;font-size:11.5px;line-height:1.3;margin-top:1px}
+  #sbcs-modal .segc{display:flex;background:#ffffff10;border-radius:9px;padding:2px;gap:2px}
+  #sbcs-modal .segc button{flex:1;border:0;background:none;color:#b7c3d3;font:600 13px system-ui,sans-serif;padding:7px 8px;border-radius:7px;
+    cursor:pointer;transition:background 160ms ease,color 160ms ease,transform 100ms ease-out}
+  #sbcs-modal .segc button[aria-pressed="true"]{background:#fff;color:#0b1520;box-shadow:0 1px 3px #0005}
+  #sbcs-modal .summary{padding:12px 14px;border-radius:14px;background:#2b9eeb14;border:1px solid #2b9eeb33;
+    color:#c9d2df;font-size:13px;line-height:1.45}
+  #sbcs-modal .summary b{color:#5cb8f5;font-weight:650}
+  #sbcs-modal button:active{transform:scale(.97)}
+  #sbcs-modal *, #sbcs *{scrollbar-width:thin;scrollbar-color:#ffffff2e transparent}
+  #sbcs-modal ::-webkit-scrollbar, #sbcs ::-webkit-scrollbar{width:8px;height:8px}
+  #sbcs-modal ::-webkit-scrollbar-track, #sbcs ::-webkit-scrollbar-track{background:transparent}
+  #sbcs-modal ::-webkit-scrollbar-thumb, #sbcs ::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+  #sbcs-modal ::-webkit-scrollbar-thumb:hover, #sbcs ::-webkit-scrollbar-thumb:hover{background:#ffffff4d;background-clip:padding-box}
+  #sbcs-modal ::-webkit-scrollbar-corner, #sbcs ::-webkit-scrollbar-corner{background:transparent}
+  @media (max-width: 760px){#sbcs-modal .cols{grid-template-columns:1fr}#sbcs-modal .dlg.wide2 .foot{flex-wrap:wrap}#sbcs-modal .dlg.wide2 .foot .summary{flex-basis:100%}}
+  @media (prefers-reduced-motion: reduce){#sbcs-modal .dlg.wide2{transform:none;transition:none}}
   #sbcs-modal .opts{display:flex;flex-direction:column;gap:2px}
   #sbcs-modal .orow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 2px;
     border-bottom:1px solid #ffffff0d;cursor:pointer}
@@ -235,21 +296,21 @@
   #sbcs-modal input[type=number]{width:70px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:8px;padding:5px 8px;font:inherit}
   #sbcs-modal .rs{position:relative;height:26px;margin:4px 8px 0}
   #sbcs-modal .rs-track{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:4px;background:#3a4454}
-  #sbcs-modal .rs-fill{position:absolute;top:11px;height:4px;border-radius:4px;background:#27b36a}
+  #sbcs-modal .rs-fill{position:absolute;top:11px;height:4px;border-radius:4px;background:#2b9eeb}
   #sbcs-modal input.rs-in{-webkit-appearance:none!important;appearance:none!important;position:absolute!important;left:0;top:0;
     width:100%!important;height:26px!important;margin:0!important;padding:0!important;background:transparent!important;
     border:0!important;box-shadow:none!important;pointer-events:none;outline:none;opacity:1!important}
   #sbcs-modal input.rs-in::-webkit-slider-runnable-track{-webkit-appearance:none;background:transparent;height:26px;border:0}
   #sbcs-modal input.rs-in::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;margin-top:4px;
-    border-radius:50%;background:#fff;border:3px solid #27b36a;cursor:grab;box-shadow:0 1px 3px #0009}
+    border-radius:50%;background:#fff;border:3px solid #2b9eeb;cursor:grab;box-shadow:0 1px 3px #0009}
   #sbcs-modal input.rs-in::-moz-range-track{background:transparent;border:0}
   #sbcs-modal input.rs-in::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:#fff;
-    border:3px solid #27b36a;cursor:grab}
+    border:3px solid #2b9eeb;cursor:grab}
   #sbcs-modal .rs-val{color:#fff;font-weight:700;margin-left:6px;letter-spacing:0}
   #sbcs-modal .hint{color:#9aa6b8;font-size:12px}
   #sbcs-modal select{background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:8px;padding:7px 8px;font:inherit}
   #sbcs-modal .saved{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;margin-bottom:6px;
-    border-radius:8px;background:#27b36a1f;color:#bff5d6}
+    border-radius:8px;background:#2b9eeb1f;color:#cfe9fb}
   `;
 
   const SVG_NS = "http://www.w3.org/2000/svg";
@@ -347,19 +408,27 @@
     return box;
   }
 
-  // Small dialog with custom body (the auto-complete options). Returns { close }.
-  function openDialog({ title, subtitle, body, confirmLabel, onConfirm }) {
+  // Centred dialog with a custom body (the auto-complete options): the page behind is dimmed,
+  // the dialog fades in from slightly smaller and leaves the same way. Header with ✕, the body,
+  // then the summary beside Cancel / the main button. Closes on Escape, ✕, Cancel or a click on
+  // the dimmed area. Returns { close }.
+  function openDialog({ title, subtitle, body, summary, confirmLabel, onConfirm }) {
     if (!document.getElementById("sbcs-modal-style")) {
       const st = el("style");
       st.id = "sbcs-modal-style";
       st.textContent = MODAL_CSS;
       document.head.appendChild(st);
     }
-    const overlay = el("div");
+    const overlay = el("div", "centre-host");
     overlay.id = "sbcs-modal";
-    const dlg = el("div", "dlg narrow");
+    const dlg = el("div", "dlg wide2");
     const top = el("div", "top");
-    top.append(el("h2", "", title), el("div", "sub", subtitle));
+    const heading = el("div", "heading");
+    heading.append(el("h2", "", title), el("div", "sub", subtitle));
+    const x = el("button", "x", "✕");
+    x.type = "button";
+    x.setAttribute("aria-label", "Close");
+    top.append(heading, x);
     const scroll = el("div", "scroll");
     scroll.append(body);
     const foot = el("div", "foot");
@@ -371,23 +440,35 @@
         close();
       }
     };
+    let closed = false;
     function close() {
+      if (closed) return;
+      closed = true;
       document.removeEventListener("keydown", onKey, true);
-      overlay.remove();
+      overlay.classList.remove("in"); // leaves the way it came
+      setTimeout(() => overlay.remove(), REDUCED_MOTION() ? 0 : 200);
     }
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) close();
+    });
+    x.addEventListener("click", close);
     cancel.addEventListener("click", close);
     go.addEventListener("click", () => {
       close();
       onConfirm();
     });
     document.addEventListener("keydown", onKey, true);
-    foot.append(el("div", "sum"), cancel, go);
+    if (summary) foot.append(summary);
+    foot.append(cancel, go);
     dlg.append(top, scroll, foot);
     overlay.append(dlg);
     document.body.append(overlay);
-    go.focus();
+    requestAnimationFrame(() => overlay.classList.add("in"));
+    go.focus({ preventScroll: true });
     return { close };
   }
+
+  const REDUCED_MOTION = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
   // sections: [{ id, name, players: [details] }]. Resolves with { ids, submit } for the squads left
   // toggled on ("Complete" = fill and submit, the default; "Fill only" = place them), or null if
@@ -567,7 +648,11 @@
     mini.hidden = true;
     mini.addEventListener("click", () => setCollapsed(false));
 
-    body.append(drawer, ctxBox, btns, offline, status, result);
+    // While it works: one line per step (read club → concept search → solve → confirm → place).
+    const stepsBox = el("div", "steps");
+    stepsBox.hidden = true;
+
+    body.append(drawer, ctxBox, btns, offline, stepsBox, status, result);
     root.append(header, mini, body);
     document.body.appendChild(root);
 
@@ -655,33 +740,41 @@
         coinsField("Max player value", "maxCost", 10000000),
         numberField("Time limit per SBC (s)", "timeLimitS", 2, 60, 1)
       );
-      const dev = el("details");
-      dev.append(el("summary", "", "Developer tools"));
-      const devRow = el("div", "dev");
-      const addDump = (label, cmd, prefix) =>
-        devRow.append(button(label, "btn small", async () => {
-          showBusy(`${label}…`);
-          try {
-            const data = await request(cmd, { onProgress: showBusy });
-            const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-            // One-click (gallery) SBC recon carries EA method sources: its own name, kept out of git.
-            const name = `${data?.kind === "sbc-oneclick" ? "sbc-oneclick" : prefix}-${stamp}.json`;
-            download(name, data);
-            showDone(`Saved ${name}`);
-          } catch (e) {
-            showDone(`${label} failed: ${e.message}`, "bad");
-          }
-        }));
-      addDump("Probe", "probe", "probe");
-      addDump("Dump club", "dumpClub", "club");
-      addDump("Dump SBC", "dumpSbc", "sbc");
-      addDump("Dump all SBCs", "dumpAllSbcs", "sbc-all");
-      addDump("Rating code", "ratingCode", "rating-code");
-      addDump("Gallery probe", "galleryProbe", "gallery-probe");
-      addDump("Concept probe", "conceptProbe", "concept-probe");
-      dev.append(devRow);
-      // Recon dumps are for development: hidden in Chrome Web Store installs (only those get an update_url).
-      if (!chrome.runtime.getManifest().update_url) d.append(dev);
+      // Developer tools (recon dumps: Probe, Dump club/SBC, Gallery/Concept probe…): commented out so
+      // they don't ship. To use them while testing, uncomment the block below and reload the extension.
+      // const dev = el("details");
+      // dev.append(el("summary", "", "Developer tools"));
+      // const devRow = el("div", "dev");
+      // const addDump = (label, cmd, prefix) =>
+      //   devRow.append(button(label, "btn small", async () => {
+      //     showBusy(`${label}…`);
+      //     try {
+      //       const data = await request(cmd, { onProgress: showBusy });
+      //       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      //       // One-click (gallery) SBC recon carries EA method sources: its own name, kept out of git.
+      //       const name = `${data?.kind === "sbc-oneclick" ? "sbc-oneclick" : prefix}-${stamp}.json`;
+      //       download(name, data);
+      //       showDone(`Saved ${name}`);
+      //     } catch (e) {
+      //       showDone(`${label} failed: ${e.message}`, "bad");
+      //     }
+      //   }));
+      // addDump("Probe", "probe", "probe");
+      // addDump("Dump club", "dumpClub", "club");
+      // addDump("Dump SBC", "dumpSbc", "sbc");
+      // addDump("Dump all SBCs", "dumpAllSbcs", "sbc-all");
+      // addDump("Rating code", "ratingCode", "rating-code");
+      // addDump("Gallery probe", "galleryProbe", "gallery-probe");
+      // addDump("Concept probe", "conceptProbe", "concept-probe");
+      // dev.append(devRow);
+      // // Recon dumps are for development: hidden in Chrome Web Store installs (only those get an update_url).
+      // let storeInstall = false;
+      // try {
+      //   storeInstall = !!chrome.runtime.getManifest().update_url;
+      // } catch {
+      //   /* extension reloaded: treat as unpacked */
+      // }
+      // if (!storeInstall) d.append(dev);
       return d;
     }
 
@@ -701,10 +794,54 @@
       fillSet.hidden = !ctx.onSet || !!ctx.sidebarButton;
       fillSet.className = "btn primary";
       fillSet.disabled = busy || left < 1 || solverOnline === false;
+      btns.hidden = fillOne.hidden && fillSet.hidden; // no empty row (and gap) when both are hidden
+    }
+
+    // Steps are recognised from the progress messages the flows already send, so every flow
+    // (single fill, whole set, solve multiple times, gallery) gets them without extra wiring.
+    const STEP_PHASES = [
+      ["concept", /concept/i, "Search concept players"],
+      ["submit", /^Submitting|^Starting the challenge/, "Submit"],
+      ["place", /^Placing|^Saving squad|^Filling|^Restoring|again…$/, "Place squad"],
+      ["confirm", /^Waiting for you|^Showing the cards/, "Confirm"],
+      ["solve", /^Finding|^Solving/, "Find squad"],
+      ["grid", /^Loading your .* cards/, "Load the grid's cards"],
+      ["load", /^Loading/, "Load the set"],
+      ["club", /Reading your club|^Club reports|^Serializing/, "Read your club"]
+    ];
+    let steps = []; // [{ key, label, detail, state: "run" | "done" | "fail" }]
+
+    function trackStep(text) {
+      const phase = STEP_PHASES.find(([, re]) => re.test(text));
+      const current = steps.find((st) => st.state === "run");
+      if (phase && phase[0] !== current?.key) {
+        if (current) current.state = "done";
+        let st = steps.find((x) => x.key === phase[0]);
+        if (!st) steps.push((st = { key: phase[0], label: phase[2], detail: "" }));
+        st.state = "run";
+        st.detail = text;
+      } else if (current) current.detail = text;
+      renderSteps();
+    }
+
+    function renderSteps() {
+      stepsBox.replaceChildren();
+      for (const st of steps) {
+        const row = el("div", `step ${st.state}`);
+        const icon = el("i", "", st.state === "done" ? "✓" : st.state === "fail" ? "✕" : "");
+        const txt = el("div", "", st.label);
+        if (st.detail && st.state !== "done") txt.append(el("div", "detail", st.detail));
+        row.append(icon, txt);
+        stepsBox.append(row);
+      }
+      stepsBox.hidden = !steps.length;
     }
 
     function showBusy(text) {
-      status.hidden = false;
+      if (busy) {
+        trackStep(text);
+        status.hidden = true; // the running step shows it
+      } else status.hidden = false;
       spinner.hidden = false;
       statusText.className = "";
       statusText.textContent = text;
@@ -712,6 +849,9 @@
     }
 
     function showDone(text, tone = "") {
+      const current = steps.find((st) => st.state === "run");
+      if (current) current.state = tone === "bad" ? "fail" : "done";
+      renderSteps();
       status.hidden = false;
       spinner.hidden = true;
       statusText.className = tone;
@@ -720,7 +860,7 @@
     }
 
     function syncMini() {
-      mini.hidden = status.hidden;
+      mini.hidden = status.hidden && !(busy && steps.length);
       miniSpin.hidden = spinner.hidden;
       miniText.className = statusText.className;
       miniText.textContent = statusText.textContent;
@@ -735,6 +875,8 @@
 
     function clearResult() {
       shownFor = null;
+      steps = [];
+      renderSteps();
       result.replaceChildren();
       status.hidden = true;
       syncMini();
@@ -751,7 +893,13 @@
 
     function setBusy(v) {
       busy = v;
-      if (v) shownFor = null; // a new run: its result is tracked from the next poll
+      if (v) {
+        shownFor = null; // a new run: its result is tracked from the next poll
+        steps = [];
+        renderSteps();
+      }
+      health.classList.toggle("busy", v);
+      healthText.textContent = v ? "Working…" : solverOnline === false ? "Solver not loaded" : "Solver ready";
       refreshButtons();
     }
 
@@ -1261,18 +1409,36 @@
       ["keepSquadPlayers", "Keep Squad Players, Fill Rest", "Players already in this SBC stay; only the empty slots are filled."]
     ];
 
+    // ---------- the "Auto Complete" dialog (opened from the app's sidebar) ----------
+    // Centred, two columns of tiles (what to use on the left, how to solve on the right) and a
+    // live summary beside Find squad. Same options and behaviour.
+
+    // Short labels inside the tiles (the full explanations are tooltips).
+    const SHEET_LABELS = {
+      allowTradeable: "Tradeable players",
+      allowSpecial: "Special players",
+      useConcept: "Concept players",
+      ignoreExclusions: "Ignore exclusions",
+      excludeActiveSquad: "Active squad",
+      raresOnlyIfRequired: "Rares, unless required",
+      storageFirst: "SBC storage first",
+      useUnassigned: "Unassigned duplicates",
+      useTransferDuplicates: "Transfer list duplicates",
+      keepSquadPlayers: "Keep players already in the squad"
+    };
+
     function openAutoOptions(scope) {
       if (busy) return;
       const a = settings.auto;
       const id = ctx.challengeId;
       const inSet = ctx.onSbc && (ctx.setChallenges ?? 0) > 1;
       const left = (ctx.setChallenges ?? 0) - (ctx.setCompleted ?? 0);
-      const body = el("div", "opts");
       const save = () => saveSettings(settings);
+      const tips = Object.fromEntries(AUTO_TOGGLES.map(([key, , tip]) => [key, tip]));
       let afterToggle = () => {}; // set below once the "solve multiple times" controls exist
       const toggleRow = (key, label, tip, disabled = false) => {
         const row = el("label", `orow${disabled ? " dis" : ""}`);
-        row.title = tip;
+        row.title = tip || "";
         const sw = el("span", "sw");
         const cb = el("input");
         cb.type = "checkbox";
@@ -1284,8 +1450,30 @@
           afterToggle();
         });
         sw.append(cb, el("span"));
-        row.append(el("span", "", label), sw);
+        row.append(el("span", "otxt", label), sw);
         return row;
+      };
+      const tile = (title, ...children) => {
+        const t = el("div", "tile");
+        t.append(el("h4", "", title), ...children);
+        return t;
+      };
+      const toggleTile = (title, keys, disabled = {}) => tile(title, ...keys.map((key) =>
+        toggleRow(key, SHEET_LABELS[key], disabled[key] || tips[key], !!disabled[key])));
+      // Segmented control: one choice of several, all visible at once.
+      const segmented = (choices, value, onPick) => {
+        const seg = el("div", "segc");
+        for (const [v, label] of choices) {
+          const b = el("button", "", label);
+          b.type = "button";
+          b.setAttribute("aria-pressed", String(v === value));
+          b.addEventListener("click", () => {
+            seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+            onPick(v);
+          });
+          seg.append(b);
+        }
+        return seg;
       };
       const rangeRow = (label, minKey, maxKey) => {
         const box = el("div", "orange");
@@ -1303,20 +1491,39 @@
             a[minKey] = l;
             a[maxKey] = h;
             save();
+            refreshSummary();
           }
         }));
         return box;
       };
+      const ratingsTile = () => tile("Ratings", rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
+      const columns = (leftTiles, rightTiles) => {
+        const cols = el("div", "cols");
+        const l = el("div", "col");
+        const r = el("div", "col");
+        l.append(...leftTiles);
+        r.append(...rightTiles);
+        cols.append(l, r);
+        return cols;
+      };
+
+      // Live summary: what Find squad will do with these options.
+      const summary = el("div", "summary");
+      let summaryText = () => [];
+      function refreshSummary() {
+        summary.replaceChildren();
+        for (const part of summaryText()) {
+          if (typeof part === "string") summary.append(document.createTextNode(part));
+          else summary.append(el("b", "", part.b));
+        }
+      }
+      const body = el("div", "opts");
+      body.addEventListener("change", () => refreshSummary());
+      body.addEventListener("click", () => queueMicrotask(refreshSummary));
 
       if (scope === "points") {
         // Gallery-score SBC: only the options that apply to picking cards by points.
         const need = Math.max(0, (ctx.pointsRequired ?? 0) - (ctx.pointsSubmitted ?? 0));
-        body.append(el("div", "olabel", `${fmt(ctx.pointsSubmitted ?? 0)} of ${fmt(ctx.pointsRequired ?? 0)} points submitted. ${fmt(need)} to go.`));
-        for (const [key, label, tip] of AUTO_TOGGLES) {
-          if (POINTS_TOGGLES.has(key)) body.append(toggleRow(key, key === "useConcept" ? "Use Concept Players" : label, key === "useConcept" ? "Gallery SBCs take only cards you own." : tip, key === "useConcept"));
-        }
-        body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
-        // Max cards: the cheapest selection that reaches the target using at most this many.
         const limit = Math.max(1, ctx.pointsLimit || 30);
         const maxBox = el("div", "orange");
         const maxLabel = el("div", "olabel", "Max cards");
@@ -1331,14 +1538,26 @@
           onChange: ([v]) => {
             a.pointsMaxCards = v;
             save();
+            refreshSummary();
           }
-        }), el("div", "hint", "Fewer cards means higher-rated ones. Use the rating range to keep cards you want."));
-        body.append(maxBox);
+        }));
+        maxBox.title = "Fewer cards means higher-rated ones. Use the rating range to keep cards you want.";
+        body.append(columns(
+          [toggleTile("Use", ["allowTradeable", "allowSpecial", "useConcept", "ignoreExclusions"], { useConcept: "Gallery SBCs take only cards you own" }),
+            toggleTile("Take from", ["storageFirst"])],
+          [toggleTile("Leave out", ["excludeActiveSquad"]), ratingsTile(), tile("Cards", maxBox)]
+        ));
+        summaryText = () => [
+          "Picks the ", { b: "cheapest cards" }, ` that reach ${fmt(need)} points, using at most `,
+          { b: `${Math.min(limit, a.pointsMaxCards || limit)} cards` }, a.excludeActiveSquad ? ", leaving out your active squad." : "."
+        ];
+        refreshSummary();
         openDialog({
-          title: ctx.challengeName || "Gallery SBC",
-          subtitle: "Pick cards whose gallery points reach the target.",
+          title: "Auto Complete",
+          subtitle: `${ctx.challengeName || "Gallery SBC"} · ${fmt(ctx.pointsSubmitted ?? 0)} of ${fmt(ctx.pointsRequired ?? 0)} points`,
           body,
-          confirmLabel: "Generate solution",
+          summary,
+          confirmLabel: "Find cards",
           onConfirm: () => runPoints()
         });
         return;
@@ -1355,11 +1574,25 @@
         );
         body.append(saved);
       }
-      for (const [key, label, tip] of AUTO_TOGGLES) body.append(toggleRow(key, label, tip));
+
+      // Pick by / Complete, in one tile.
+      const strategy = [el("div", "olabel", "Pick by"), segmented([["price", "Price"], ["rating", "Rating"]], a.solveUsing, (v) => {
+        a.solveUsing = v;
+        save();
+      })];
+      let whole = scope === "set";
+      if (scope === "challenge" && inSet && left > 1) {
+        whole = a.scope === "set";
+        strategy.push(el("div", "olabel", "Complete"), segmented([["challenge", "This challenge"], ["set", `Whole set (${left} left)`]], whole ? "set" : "challenge", (v) => {
+          whole = v === "set";
+          a.scope = v;
+          save();
+        }));
+      }
 
       // Solve multiple times (repeatable SBCs only)
       const multi = el("div", "orow");
-      const multiToggle = toggleRow("solveMultiple", "Solve Multiple Times", "Repeatable SBCs: find several squads with no player reused.");
+      const multiToggle = toggleRow("solveMultiple", "Solve multiple times", "Repeatable SBCs: find several squads with no player reused.");
       // Never more squads than the SBC can still be completed (this one included).
       const maxTimes = Math.min(MAX_SOLVE_TIMES, ctx.repeatsLeft ?? MAX_SOLVE_TIMES);
       const times = el("input");
@@ -1383,57 +1616,37 @@
           ? "Only for repeatable SBCs."
           : `Only ${ctx.repeatsLeft} completion${ctx.repeatsLeft === 1 ? "" : "s"} left for this SBC.`;
       }
-      body.append(multi);
       function refreshMultiple() {
         times.disabled = !multiAllowed || !a.solveMultiple;
       }
       refreshMultiple();
       afterToggle = refreshMultiple;
 
-      body.append(rangeRow("Rating range", "ratingMin", "ratingMax"), rangeRow("Special rating range", "specialRatingMin", "specialRatingMax"));
+      body.append(columns(
+        [toggleTile("Use", ["allowTradeable", "allowSpecial", "useConcept", "ignoreExclusions"]),
+          toggleTile("Take from", ["storageFirst", "useUnassigned", "useTransferDuplicates", "keepSquadPlayers"])],
+        [toggleTile("Leave out", ["excludeActiveSquad", "raresOnlyIfRequired"]), ratingsTile(),
+          tile("Strategy", ...strategy), tile("Repeat", multi)]
+      ));
 
-      const using = el("div", "orange");
-      using.append(el("div", "olabel", "Solve using"));
-      const select = el("select");
-      [["price", "Price (cheapest squad)"], ["rating", "Rating (lowest-rated players)"]].forEach(([v, t]) => {
-        const o = el("option", "", t);
-        o.value = v;
-        select.append(o);
-      });
-      select.value = a.solveUsing;
-      select.addEventListener("change", () => {
-        a.solveUsing = select.value;
-        save();
-      });
-      using.append(select);
-      body.append(using);
-
-      let whole = scope === "set";
-      if (scope === "challenge" && inSet && left > 1) {
-        const pick = el("div", "orange");
-        pick.append(el("div", "olabel", "Complete"));
-        const which = el("select");
-        [["challenge", "This challenge"], ["set", `Whole set (${left} challenges left)`]].forEach(([v, t]) => {
-          const o = el("option", "", t);
-          o.value = v;
-          which.append(o);
-        });
-        which.value = a.scope === "set" ? "set" : "challenge";
-        whole = which.value === "set";
-        which.addEventListener("change", () => {
-          whole = which.value === "set";
-          a.scope = which.value;
-          save();
-        });
-        pick.append(which);
-        body.append(pick);
-      }
+      summaryText = () => {
+        const parts = [];
+        if (whole) parts.push("Fills ", { b: `all ${left} challenges` }, " with no player used twice. ");
+        else if (multiAllowed && a.solveMultiple) parts.push("Finds ", { b: `${Math.min(a.solveTimes, maxTimes)} squads` }, " with no player used twice. ");
+        parts.push("Picks the ", { b: a.solveUsing === "rating" ? "lowest-rated" : "cheapest" }, " squad from ", { b: "your own cards" });
+        parts.push(a.useConcept ? ", then concept players only for slots your club can't fill." : ".");
+        if (a.excludeActiveSquad) parts.push(" Leaves out your active squad.");
+        if (!a.ignoreExclusions) parts.push(settings.maxCost > 0 ? ` Max player value ${fmt(settings.maxCost)}.` : " No max player value.");
+        return parts;
+      };
+      refreshSummary();
 
       const { close } = openDialog({
-        title: scope === "set" ? "Auto Complete Set" : "Auto Complete SBC",
-        subtitle: "Select your auto-complete options.",
+        title: scope === "set" ? "Auto Complete Set" : "Auto Complete",
+        subtitle: [ctx.challengeName || ctx.setName, inSet || scope === "set" ? ctx.setName : null].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(" · "),
         body,
-        confirmLabel: "Generate solution",
+        summary,
+        confirmLabel: "Find squad",
         onConfirm: () => {
           if (whole) runFillSet();
           else if (multiAllowed && a.solveMultiple) runFillMultiple(Math.min(a.solveTimes, maxTimes));

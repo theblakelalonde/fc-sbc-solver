@@ -15,7 +15,7 @@ Everything runs inside your browser: no server, no account, nothing to install b
 3. **Load unpacked** → select the unzipped `fc27-sbc-solver-vX.Y.Z` folder (the one containing `manifest.json`).
 4. Open the [FC 27 Web App](https://www.ea.com/ea-sports-fc/ultimate-team/web-app/) and press F5.
 
-The **SBC Solver** panel appears bottom-left. Its pill should say **Solver ready** (green).
+The **SBC Solver** panel appears bottom-left. Its pill should say **Solver ready** (blue dot).
 
 **Update:** download the new release, replace the folder's contents with it, press reload ↻ on the extension card, then F5 the Web App. (Keeping the same folder keeps your settings.)
 
@@ -23,8 +23,8 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 
 ## Use
 
-1. Open an SBC. An **Auto Complete** button (green outline) appears in the app's SBC sidebar; on a set's overview page it's **Auto Complete Set**.
-2. Pick options (tradeable players, special players, storage first, exclude active squad, solve multiple times, rating ranges, …) and press **Generate solution**.
+1. Open an SBC. An **Auto Complete** button (blue outline) appears in the app's SBC sidebar; on a set's overview page it's **Auto Complete Set**.
+2. Pick options (tradeable players, special players, storage first, exclude active squad, solve multiple times, rating ranges, …) in the Auto Complete dialog, and press **Find squad**. The panel shows each step as it works.
 3. Check the squad, then press **Submit** in the app. **Undo fill** in the panel puts back what was there before.
 
 - **Whole sets / solve multiple times:** a preview lists every squad (no player used twice) before anything is placed. Toggle off any you don't want, then press **Complete** (the default) to fill and submit each remaining squad back to back, or **Fill only** to place them and submit yourself. If your club can't cover all of them, you get the ones that are possible. Submitting can't be undone; it stops at the first squad the app doesn't accept.
@@ -57,7 +57,7 @@ cd extension
 node --test test/solver.test.js
 ```
 
-**Developer tools** (⚙ → Developer tools): Probe (which Web App globals exist), Dump club, Dump SBC, Dump all SBCs. Put reviewed dumps in `test/fixtures/`. Dumps can contain account identifiers; check before committing.
+**Developer tools** (Probe, Dump club, Dump SBC, Dump all SBCs, Gallery/Concept probe) are commented out in `buildDrawer()` in `extension/src/content.js` so they don't ship; uncomment that block to get them back under ⚙. Put reviewed dumps in `test/fixtures/`. Dumps can contain account identifiers; check before committing.
 
 ### Reference solver (Python, optional)
 

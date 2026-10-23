@@ -27,12 +27,12 @@ jobs:
       - name: Build the zips
         # Release zip: one top-level folder holding manifest.json, so "Load unpacked" points at it.
         # Store zip: manifest.json at the zip root (what the Chrome Web Store requires).
-        # Neither needs the tests or the icon generator.
+        # Neither needs the tests.
         run: |
           name="fc27-sbc-solver-$GITHUB_REF_NAME"
           mkdir -p "dist/$name"
           cp -r extension/. "dist/$name/"
-          rm -rf "dist/$name/test" "dist/$name/icons/make-icons.js"
+          rm -rf "dist/$name/test"
           (cd dist && zip -r "$name.zip" "$name")
           (cd "dist/$name" && zip -r "../$name-chrome-web-store.zip" .)
           echo "ZIP=dist/$name.zip" >> "$GITHUB_ENV"

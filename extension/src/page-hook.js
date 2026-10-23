@@ -1652,10 +1652,12 @@
     if (document.getElementById("sbcs-side-style")) return;
     const st = document.createElement("style");
     st.id = "sbcs-side-style";
-    st.textContent = `.sbcs-side{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;
-      background:#0b0f16;color:#3ddc84;border:2px solid #27b36a;cursor:pointer;font-weight:600}
-      .sbcs-side:hover{background:#12301f}
-      .sbcs-side[disabled]{opacity:.5;cursor:default}`;
+    st.textContent = `button.sbcs-side{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;
+      background:linear-gradient(180deg,#2b9eeb,#1a6fa8);color:#fff;border:1px solid #5cb8f566;cursor:pointer;font-weight:600;box-shadow:0 4px 14px #2b9eeb33;
+      transition:filter 120ms ease,transform 100ms ease-out}
+      button.sbcs-side:hover{filter:brightness(1.08)}
+      button.sbcs-side:active{transform:scale(.98)}
+      button.sbcs-side[disabled]{opacity:.5;cursor:default}`;
     document.head.appendChild(st);
   }
 

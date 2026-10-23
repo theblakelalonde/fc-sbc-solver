@@ -14,20 +14,33 @@ Upload `fc27-sbc-solver-vX.Y.Z-chrome-web-store.zip` from the GitHub release (ma
 
 > Solves SBCs in the EA SPORTS FC Ultimate Team Web App from your own club and fills the squads. Not affiliated with EA.
 
-**Description:**
+**Description** (plain text, paste as is):
 
-> Auto Complete for Squad Building Challenges in the EA SPORTS FC Ultimate Team Web App.
->
-> • Finds the cheapest squad from your own club, SBC storage and duplicates, and places it on the pitch.
-> • Whole sets and repeatable SBCs: preview every squad (no player used twice), then fill them, or fill and submit them back to back.
-> • Gallery (points) SBCs: picks the cheapest cards that reach the points target, up to the number of cards you choose.
-> • Concept players (optional): fills the slots your club can't cover with cards to buy, priced by estimate. Squads with concept players are never submitted.
-> • Price badges on cards (EA market average, tradeable / untradeable / SBC storage), squad value in the SBC header, pack value on store previews, and SBC values on the SBC page.
-> • Options: tradeable / special players, storage first, exclude your active squad, rating ranges, max player value.
->
-> Everything runs in your browser: no account, no server, no data collected. The extension never buys, lists or bids on the transfer market.
->
-> Not affiliated with or endorsed by Electronic Arts. EA SPORTS FC is a trademark of Electronic Arts Inc. Third-party tools may be against EA's terms of service; use at your own risk.
+```text
+Auto Complete for Squad Building Challenges in the EA SPORTS FC Ultimate Team Web App.
+
+Open an SBC, press Auto Complete in the challenge sidebar, pick your options, and the cheapest squad from your own club is placed on the pitch, ready to review and submit.
+
+WHAT IT DOES
+• Finds the cheapest squad that meets every requirement (ratings, chemistry, leagues, nations, clubs, rarities and more) using the cards you already own: club, SBC storage, unassigned and transfer list duplicates.
+• Whole sets and repeatable SBCs: preview every squad first (no player used twice), then fill them, or fill and submit them back to back.
+• Gallery (points) SBCs: picks the cheapest cards that reach the points target, using at most the number of cards you choose.
+• Concept players (optional): when your club can't cover a challenge, the missing slots are filled with players to buy, with an estimated price. Squads with concept players are never submitted.
+
+YOU STAY IN CONTROL
+• Leave out your active squad, rares or special cards, set rating ranges and a max player value, and pick by price or by lowest rating.
+• A live summary tells you exactly what will happen before you press Find squad.
+• Step-by-step progress while it works, and Undo puts back whatever was in the squad before.
+
+PRICES AT A GLANCE
+• Coin value on every player card (EA market average), plus tradeable, untradeable and SBC storage markers and the card's FUT Gallery score.
+• Squad value in the SBC header, pack value on store previews, and estimated SBC values on the SBC page.
+
+PRIVATE BY DESIGN
+Everything runs in your browser. No account, no server, nothing collected or sent anywhere. It never buys, lists or bids on the transfer market.
+
+Not affiliated with or endorsed by Electronic Arts. EA SPORTS FC is a trademark of Electronic Arts Inc. Third-party tools may be against EA's terms of service; use at your own risk.
+```
 
 **Category:** Tools (or Fun)
 
