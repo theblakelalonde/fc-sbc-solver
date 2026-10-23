@@ -75,3 +75,22 @@ Not affiliated with or endorsed by Electronic Arts. EA SPORTS FC is a trademark 
 **Visibility:** Public, or Unlisted (only people with the link can install it).
 
 **Trader status:** non-trader (free, non-commercial).
+
+## Automatic upload on release (one-time setup)
+
+The release workflow uploads the store zip and submits it for review by itself once these four GitHub secrets exist. Without them it only makes the GitHub release.
+
+1. **Google Cloud project:** go to https://console.cloud.google.com, create a project (e.g. "SBC Solver publishing"), then **APIs & Services → Library** → search **Chrome Web Store API** → **Enable**.
+2. **OAuth consent screen** (**APIs & Services → OAuth consent screen**): User type **External**, fill in an app name and your email, skip scopes, add your own Google account as a **test user**, save. Then set **Publishing status → In production** (ignore the verification prompt; you're the only user). In "Testing" status Google expires refresh tokens after 7 days and the upload starts failing.
+3. **OAuth client** (**APIs & Services → Credentials → Create credentials → OAuth client ID**): type **Web application**, add the authorized redirect URI `https://developers.google.com/oauthplayground`, create. Copy the **client ID** and **client secret**.
+4. **Refresh token:** open https://developers.google.com/oauthplayground → ⚙ (top right) → tick **Use your own OAuth credentials** → paste the client ID and secret. In "Input your own scopes" enter `https://www.googleapis.com/auth/chromewebstore` → **Authorize APIs** → sign in with the account that owns the extension → **Exchange authorization code for tokens**. Copy the **refresh token**.
+5. **Publisher ID:** Chrome Web Store Developer Dashboard → **Publisher → Settings** (or Account) → copy the publisher ID.
+6. **GitHub secrets:** repo → **Settings → Secrets and variables → Actions → New repository secret**, add:
+   - `CWS_CLIENT_ID`
+   - `CWS_CLIENT_SECRET`
+   - `CWS_REFRESH_TOKEN`
+   - `CWS_PUBLISHER_ID`
+
+The account needs 2-Step Verification turned on to publish. The extension ID (`bnjielgnbghfkfjlkdgjnopinmnebpfp`) is already in the workflow.
+
+After that, every release (bump the version, push the tag) also uploads to the store and submits it for review; the run's log shows the store's responses. If a run fails at the store step, the GitHub release is already made: fix the secret or the package and upload manually under **Package**.

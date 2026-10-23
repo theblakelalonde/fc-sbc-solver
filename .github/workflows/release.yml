@@ -1,6 +1,8 @@
-# Publishes a GitHub Release with the ready-to-load extension zip when a version tag is pushed:
-#   git tag v0.9.6 && git push origin v0.9.6
+# Publishes a GitHub Release with the ready-to-load extension zips when a version tag is pushed:
+#   git tag v1.0.3 && git push origin v1.0.3
 # The tag must match "version" in extension/manifest.json.
+# If the Chrome Web Store secrets are set (see docs/chrome-web-store.md), the store zip is also
+# uploaded to the Chrome Web Store and submitted for review. Without them that step is skipped.
 name: Release
 
 on:
@@ -9,6 +11,12 @@ on:
 
 permissions:
   contents: write
+
+env:
+  # Not secret: it's in the store listing's URL.
+  CWS_EXTENSION_ID: bnjielgnbghfkfjlkdgjnopinmnebpfp
+  # Secrets can't be tested in `if:` directly, so expose whether they're set.
+  HAS_CWS_SECRETS: ${{ secrets.CWS_REFRESH_TOKEN != '' && secrets.CWS_PUBLISHER_ID != '' }}
 
 jobs:
   release:
@@ -42,3 +50,56 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" "$ZIP" "$STORE_ZIP" --title "$GITHUB_REF_NAME" --generate-notes
+
+      - name: Upload to the Chrome Web Store and submit for review
+        # Chrome Web Store API v2: refresh token -> access token, upload the package, publish.
+        # Publishing submits the new version for review; it goes live (with the listing's current
+        # visibility) once approved, and users' Chrome updates itself after that.
+        if: env.HAS_CWS_SECRETS == 'true'
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+          token=$(curl -fsS https://oauth2.googleapis.com/token \
+            -d client_id="$CWS_CLIENT_ID" -d client_secret="$CWS_CLIENT_SECRET" \
+            -d refresh_token="$CWS_REFRESH_TOKEN" -d grant_type=refresh_token | jq -r .access_token)
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "::error::Couldn't get a Chrome Web Store access token. Check the CWS_* secrets (the refresh token may have expired)."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          item="publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID"
+
+          # call METHOD URL [file]: prints the response body; on a non-2xx status prints it (and the
+          # error) to the log instead and fails.
+          call() {
+            local out code body
+            if [ -n "${3:-}" ]; then
+              out=$(curl -sS -w '\n%{http_code}' -X "$1" -H "Authorization: Bearer $token" -T "$3" "$2")
+            else
+              out=$(curl -sS -w '\n%{http_code}' -X "$1" -H "Authorization: Bearer $token" -H "Content-Length: 0" "$2")
+            fi
+            code=$(tail -n1 <<<"$out")
+            body=$(sed '$d' <<<"$out")
+            if [ "${code:0:1}" != "2" ]; then
+              echo "$body" >&2
+              echo "::error::Chrome Web Store API returned HTTP $code for $2" >&2
+              return 1
+            fi
+            echo "$body"
+          }
+
+          echo "Uploading $STORE_ZIP…"
+          upload=$(call POST "https://chromewebstore.googleapis.com/upload/v2/$item:upload" "$STORE_ZIP")
+          echo "$upload"
+          if grep -q '"FAILED"' <<<"$upload"; then
+            echo "::error::The store rejected the package (see the response above)."
+            exit 1
+          fi
+
+          echo "Submitting for review…"
+          call POST "https://chromewebstore.googleapis.com/v2/$item:publish"
+          echo "Submitted. It goes live once Google approves it."
