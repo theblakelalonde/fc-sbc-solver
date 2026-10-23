@@ -47,9 +47,16 @@ jobs:
           echo "STORE_ZIP=dist/$name-chrome-web-store.zip" >> "$GITHUB_ENV"
 
       - name: Publish the release
+        # Re-runnable: if the release already exists (e.g. re-running after a failed store upload),
+        # its zips are replaced instead of failing.
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "$ZIP" "$STORE_ZIP" --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" "$STORE_ZIP" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$ZIP" "$STORE_ZIP" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
 
       - name: Upload to the Chrome Web Store and submit for review
         # Chrome Web Store API v2: refresh token -> access token, upload the package, publish.
