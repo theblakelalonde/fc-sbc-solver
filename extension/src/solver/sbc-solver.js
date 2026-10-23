@@ -1650,7 +1650,8 @@
     const unsupportedReqs = requirements.filter((r) => !PER_PLAYER_KEYS.has(r.key) || !attributeSupported(r)).map(describeReq);
     const perCard = requirements.filter((r) => PER_PLAYER_KEYS.has(r.key));
     const pool = usable.filter((p) => p.galleryScore > 0 && perCard.every((r) => playerMatches(r, p, links)));
-    const stats = { poolSize: pool.length, excluded, wallTimeS: 0 };
+    // poolPoints: all usable cards' points together, so a "not possible" can say how far short it is.
+    const stats = { poolSize: pool.length, poolPoints: pool.reduce((t, p) => t + p.galleryScore, 0), excluded, wallTimeS: 0 };
     const done = (status, chosen = []) => {
       stats.wallTimeS = Math.round((now() - started) * 1000) / 1000;
       return {

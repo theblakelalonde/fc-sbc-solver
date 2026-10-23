@@ -261,7 +261,7 @@
   #sbcs-modal .dlg.wide2 .foot .go{padding:12px 24px;white-space:nowrap}
   #sbcs-modal .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
   #sbcs-modal .col{display:flex;flex-direction:column;gap:10px;min-width:0}
-  #sbcs-modal .tile{background:#ffffff06;border:1px solid #ffffff0d;border-radius:16px;padding:10px 14px 6px}
+  #sbcs-modal .tile{background:#ffffff06;border:1px solid #ffffff0d;border-radius:16px;padding:10px 14px 6px;height:auto}
   #sbcs-modal .tile h4{margin:0 0 2px;font-size:12px;font-weight:650;color:#b7c3d3;letter-spacing:.01em}
   #sbcs-modal .tile .orow{border:0;padding:6px 0}
   #sbcs-modal .tile .orange{padding:4px 0}
@@ -293,6 +293,10 @@
   #sbcs-modal .orange{padding:8px 2px;display:flex;flex-direction:column;gap:6px}
   #sbcs-modal .orange .orow{border:0;cursor:default;justify-content:flex-start}
   #sbcs-modal .olabel{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#9aa6b8}
+  /* Inside the tiles: a plain label on the left, the value large and white on the right. */
+  #sbcs-modal .tile .olabel{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:#c9d2df;margin-top:4px}
+  #sbcs-modal .tile .olabel .rs-val{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
   #sbcs-modal input[type=number]{width:70px;background:#0008;color:#fff;border:1px solid #ffffff2a;border-radius:8px;padding:5px 8px;font:inherit}
   #sbcs-modal .rs{position:relative;height:26px;margin:4px 8px 0}
   #sbcs-modal .rs-track{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:4px;background:#3a4454}
@@ -619,8 +623,10 @@
     // that injection fails (e.g. after an EA update).
     const fillOne = button("Auto Complete", "btn primary", () => openAutoOptions(ctx.onPoints ? "points" : "challenge"));
     const fillSet = button("Auto Complete Set", "btn", () => openAutoOptions("set"));
+    // On the SBC page: change the options the tile prices use, then re-price.
+    const pricingBtn = button("Pricing options", "btn", () => openAutoOptions("hub"));
     const btns = el("div", "btns");
-    btns.append(fillOne, fillSet);
+    btns.append(fillOne, fillSet, pricingBtn);
 
     const status = el("div", "status");
     const spinner = el("div", "spin");
@@ -794,7 +800,9 @@
       fillSet.hidden = !ctx.onSet || !!ctx.sidebarButton;
       fillSet.className = "btn primary";
       fillSet.disabled = busy || left < 1 || solverOnline === false;
-      btns.hidden = fillOne.hidden && fillSet.hidden; // no empty row (and gap) when both are hidden
+      pricingBtn.hidden = !ctx.onHub || !settings.priceTiles;
+      pricingBtn.disabled = busy;
+      btns.hidden = fillOne.hidden && fillSet.hidden && pricingBtn.hidden; // no empty row (and gap) when all are hidden
     }
 
     // Steps are recognised from the progress messages the flows already send, so every flow
@@ -997,9 +1005,13 @@
     // ---------- hub tiles: squad value of each set from your club ----------
 
     const TILE_TTL_MS = 60 * 60 * 1000;
+    const TILE_ERROR_RETRY_MS = 10 * 60 * 1000; // a tile that failed to price is retried after this
     let tileCache = {};
     try {
-      chrome.storage.local.get("tileCache").then((r) => (tileCache = r.tileCache || {}));
+      // v3: points SBCs priced by points, and the rating sliders no longer narrow tile prices; older
+      // entries were priced the old ways.
+      chrome.storage.local.get("tileCacheV3").then((r) => (tileCache = r.tileCacheV3 || {}));
+      chrome.storage.local.remove(["tileCache", "tileCacheV2"]);
     } catch {
       /* extension reloaded */
     }
@@ -1012,7 +1024,7 @@
 
     function saveTileCache() {
       try {
-        chrome.storage.local.set({ tileCache });
+        chrome.storage.local.set({ tileCacheV3: tileCache });
       } catch {
         /* extension reloaded */
       }
@@ -1050,9 +1062,64 @@
         return { text: "✕ not with your club", tone: "bad", title: missing.join("\n") };
       }
       if (missing.length) {
-        return { text: `≈ ${short(value)} · ${solved.length}/${all.length}`, tone: "warn", title: `${note}\nCan't do:\n${missing.join("\n")}` };
+        return { text: `≈ ${short(value)} · ${solved.length}/${all.length}`, tone: "warn", title: `${note}\nCan't do:\n${missing.join("\n")}`, value };
       }
-      return { text: `≈ ${short(value)}`, tone: "", title: note };
+      return { text: `≈ ${short(value)}`, tone: "", title: note, value };
+    }
+
+    // SBC-page prices show what your club can do: the rating sliders (normal and special) are for a
+    // particular Auto Complete run, so they don't narrow these estimates.
+    const tileOptions = (extra = {}) => solverOptions({ ratingMin: 0, ratingMax: 99, specialRatingMin: 0, specialRatingMax: 99, ...extra });
+
+    // Points (gallery) SBC: the cheapest cards from your club whose gallery points reach what's
+    // left of the target. No card limit here: the target can be reached over several submissions.
+    const isPointsSbc = (sbc) => sbc?.challenge?.type === "ONE_CLICK_CHALLENGE" || Number(sbc?.challenge?.scoreRequirement) > 0;
+
+    async function pointsTile(club, sbc) {
+      const need = Math.max(0, (Number(sbc.challenge.scoreRequirement) || 0) - (Number(sbc.challenge.submittedScore) || 0));
+      if (!need) return { text: "✓ done", tone: "", title: "Points target already reached.", value: 0 };
+      const res = await toBackground({
+        type: "solvePoints",
+        payload: {
+          club,
+          required: need,
+          requirements: sbc.requirements,
+          options: tileOptions({ timeLimitS: 5, maxCards: 0, solveUsing: "price", raresOnlyIfRequired: false })
+        }
+      });
+      if (res.status === "unsupported") return { text: "?", tone: "bad", title: `Can't estimate: ${(res.unsupported || []).join(", ")}` };
+      if (!res.players?.length) {
+        const st = res.stats || {};
+        const out = Object.entries(st.excluded || {}).map(([why, n]) => `${n} ${why}`).join(", ");
+        return {
+          text: "✕ not with your club",
+          tone: "bad",
+          title: `Needs ${fmt(need)} points; your ${st.poolSize ?? 0} usable cards have ${fmt(st.poolPoints ?? 0)} in total.`
+            + (out ? `\nLeft out by your options: ${out}.` : "")
+            + `\nAuto Complete options (active squad, special players, max player value) change what's usable.`
+        };
+      }
+      return {
+        text: `≈ ${short(res.squadValue)}`,
+        tone: "",
+        title: `Cheapest cards from your club for ${fmt(need)} points: ${res.players.length} cards, ${fmt(res.score)} points (EA prices).`,
+        value: res.squadValue
+      };
+    }
+
+    // One tile for a set: adds up its parts (squad challenges + points challenges).
+    function combineTiles(parts) {
+      if (parts.length === 1) return parts[0];
+      const priced = parts.filter((p) => typeof p.value === "number");
+      if (!priced.length) return parts[0];
+      const value = priced.reduce((a, p) => a + p.value, 0);
+      const partial = priced.length < parts.length;
+      return {
+        text: `≈ ${short(value)}${partial ? ` · ${priced.length}/${parts.length}` : ""}`,
+        tone: partial || parts.some((p) => p.tone === "warn") ? "warn" : "",
+        title: parts.map((p) => p.title).filter(Boolean).join("\n"),
+        value
+      };
     }
 
     function startHubWorker(ids) {
@@ -1081,20 +1148,40 @@
           try {
             club ??= await request("dumpClub", { args: { lite: true } });
             const inp = await request("tileInput", { args: { setId: id } });
-            if (!inp.sbcs.length) return showTile(id, { clear: true });
-            const res = await toBackground({
-              type: "solveSet",
-              payload: {
-                club,
-                sbcs: inp.sbcs,
-                options: solverOptions({ relativeGap: 0.05, timeLimitS: Math.min(8, 2 * inp.sbcs.length) })
-              }
-            });
-            tileCache[id] = { ...tileFromResult(res), at: Date.now() };
+            if (!inp.sbcs.length) {
+              // Nothing left to do in this set: remembered like any other tile.
+              tileCache[id] = { clear: true, at: Date.now() };
+              saveTileCache();
+              return showTile(id, { clear: true });
+            }
+            const squads = inp.sbcs.filter((sbc) => !isPointsSbc(sbc));
+            const parts = [];
+            if (squads.length) {
+              const res = await toBackground({
+                type: "solveSet",
+                payload: {
+                  club,
+                  sbcs: squads,
+                  options: tileOptions({ relativeGap: 0.05, timeLimitS: Math.min(8, 2 * squads.length) })
+                }
+              });
+              parts.push(tileFromResult(res));
+            }
+            for (const sbc of inp.sbcs.filter(isPointsSbc)) parts.push(await pointsTile(club, sbc));
+            tileCache[id] = { ...combineTiles(parts), at: Date.now() };
             saveTileCache();
             await showTile(id, tileCache[id]);
           } catch (e) {
-            await showTile(id, { text: "–", tone: "bad", title: e.message });
+            // Remembered too (retried after TILE_ERROR_RETRY_MS), so a failing set isn't priced again
+            // on every pass of the worker.
+            tileCache[id] = {
+              text: "⚠ can't price",
+              tone: "bad",
+              title: `Couldn't price this SBC: ${e.message}\nTries again in ${Math.round(TILE_ERROR_RETRY_MS / 60000)} minutes.`,
+              at: Date.now() - (TILE_TTL_MS - TILE_ERROR_RETRY_MS)
+            };
+            saveTileCache();
+            await showTile(id, tileCache[id]);
             if (/not running/.test(e.message)) hubStop = true;
           }
         })();
@@ -1521,6 +1608,32 @@
       body.addEventListener("change", () => refreshSummary());
       body.addEventListener("click", () => queueMicrotask(refreshSummary));
 
+      if (scope === "hub") {
+        body.append(columns(
+          [toggleTile("Use", ["allowTradeable", "allowSpecial", "ignoreExclusions"]),
+            toggleTile("Take from", ["storageFirst", "useUnassigned", "useTransferDuplicates"])],
+          [toggleTile("Leave out", ["excludeActiveSquad", "raresOnlyIfRequired"])]
+        ));
+        summaryText = () => {
+          const out = [a.excludeActiveSquad && "your active squad", !a.allowSpecial && "special cards", !a.allowTradeable && "tradeable cards"].filter(Boolean);
+          const left = out.length ? `, leaving out ${out.length > 1 ? `${out.slice(0, -1).join(", ")} and ${out[out.length - 1]}` : out[0]}` : "";
+          return ["SBC values are priced from ", { b: "your own cards" }, `${left}. Rating ranges don't apply here: they're for each Auto Complete run.`];
+        };
+        refreshSummary();
+        openDialog({
+          title: "Pricing options",
+          subtitle: "Used for the values on the SBC page (and by Auto Complete)",
+          body,
+          summary,
+          confirmLabel: "Re-price SBCs",
+          onConfirm: () => {
+            clubChanged(); // drops every tile value, so the worker prices them all again
+            pollContext();
+          }
+        });
+        return;
+      }
+
       if (scope === "points") {
         // Gallery-score SBC: only the options that apply to picking cards by points.
         const need = Math.max(0, (ctx.pointsRequired ?? 0) - (ctx.pointsSubmitted ?? 0));
@@ -1716,7 +1829,13 @@
       } else if (status === "infeasible") {
         const cap = settings.maxCost > 0 ? ` or raise Max player value (⚙, now ${fmt(settings.maxCost)})` : "";
         const withConcept = conceptStats ? " (even with the concept players found)" : "";
-        showDone(`No squad fits this SBC with these options${withConcept}. Try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete${cap}.`, "warn");
+        // A narrowed rating range is the most common reason: name it first.
+        const a = settings.auto;
+        const narrowed = [];
+        if ((a.ratingMin ?? 45) > 45 || (a.ratingMax ?? 99) < 99) narrowed.push(`rating range ${a.ratingMin}–${a.ratingMax}`);
+        if (a.allowSpecial && ((a.specialRatingMin ?? 45) > 45 || (a.specialRatingMax ?? 99) < 99)) narrowed.push(`special rating range ${a.specialRatingMin}–${a.specialRatingMax}`);
+        const range = narrowed.length ? ` Your ${narrowed.join(" and ")} may be ruling out cards it needs: widen it under Ratings.` : "";
+        showDone(`No squad fits this SBC with these options${withConcept}.${range} Or try Allow Special Players, Allow Tradeable Players or Ignore exclusions in Auto Complete${cap}.`, "warn");
       } else {
         showDone("No squad found in time. Try a longer time limit (⚙).", "warn");
       }
