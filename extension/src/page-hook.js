@@ -869,11 +869,20 @@
     };
   }
 
+  // Cards you own, by id.
+  function ownedItemsById() {
+    const byId = new Map();
+    [...clubCache(), ...storageCache(), ...(sessionMemo.storage || []), ...unassignedPlayers(), ...transferDuplicates()]
+      .forEach((it) => it?.id && byId.set(it.id, it));
+    return byId;
+  }
+
+  // Everything a fill can place: owned cards plus the concept cards found so far.
   function itemsById() {
     const byId = new Map();
     // Concept cards first, so an owned item with a colliding id always wins.
-    [...conceptCache.values(), ...clubCache(), ...storageCache(), ...(sessionMemo.storage || []), ...unassignedPlayers(), ...transferDuplicates()]
-      .forEach((it) => it?.id && byId.set(it.id, it));
+    conceptCache.forEach((it) => it?.id && byId.set(it.id, it));
+    ownedItemsById().forEach((it, id) => byId.set(id, it));
     return byId;
   }
 
@@ -2070,11 +2079,12 @@
 
   let ownedIds = null;
   let ownedAt = 0;
-  // Cached for a few seconds: this runs for every card the app draws.
+  // Cached for a few seconds: this runs for every card the app draws. Concept cards found by an
+  // earlier search aren't owned (counting them made repeat concept searches drop every card).
   function isOwned(item) {
     if (!(item?.id > 0)) return false;
     if (!ownedIds || Date.now() - ownedAt > 5000) {
-      ownedIds = new Set(itemsById().keys());
+      ownedIds = new Set(ownedItemsById().keys());
       ownedAt = Date.now();
     }
     return ownedIds.has(item.id);
