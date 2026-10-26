@@ -1,38 +1,68 @@
 # SBC Solver for Web App
 
-<img width="1672" height="940" alt="SBC_solver" src="https://github.com/user-attachments/assets/6bd526e5-eaba-4926-8f0e-9e024039fd12" />
+<img width="1400" height="560" alt="Neon SBC Solver Soccer Formation (1)" src="https://github.com/user-attachments/assets/aad2e2c0-c9fd-47c3-9154-318999575391" />
+
 
 Chrome extension for the EA SPORTS FC 27 Ultimate Team Web App. It finds the cheapest squad from your own club for a Squad Building Challenge and places it on the pitch. For repeated SBCs and whole sets it can also submit every squad for you, back to back.
 
-Everything runs inside your browser: no server, no account, nothing to install beyond loading the extension.
+Everything runs inside your browser: no server, no account, nothing collected or sent anywhere.
+
+<img width="440" height="280" alt="SBC Solver Snowflake Squad (1)" src="https://github.com/user-attachments/assets/c99c1c1a-03fc-4b85-ab06-48ed9e6fc43a" />
+
+
+**[Install from the Chrome Web Store →](https://chromewebstore.google.com/detail/sbc-solver-for-web-app/bnjielgnbghfkfjlkdgjnopinmnebpfp)**
 
 > Not affiliated with or endorsed by EA. Third-party tools may be against EA's terms of service; use at your own risk. The extension only submits SBCs when you press **Complete** in its preview, and never buys, lists or bids, or touches the transfer market.
 
 ## Install
 
+1. Open the [Chrome Web Store page](https://chromewebstore.google.com/detail/sbc-solver-for-web-app/bnjielgnbghfkfjlkdgjnopinmnebpfp) and press **Add to Chrome**.
+2. Open the [FC 27 Web App](https://www.ea.com/ea-sports-fc/ultimate-team/web-app/) (press F5 if it was already open).
+
+The **SBC Solver** panel appears bottom-left. Its pill should say **Solver ready** (blue dot). Chrome keeps the store version up to date on its own.
+
+<details>
+<summary>Manual install (from a GitHub release)</summary>
+
 1. Download `fc27-sbc-solver-vX.Y.Z.zip` from the [latest release](../../releases/latest) and unzip it somewhere you'll keep it (Chrome loads the extension from that folder).
 2. Open `chrome://extensions` and turn on **Developer mode** (top-right).
 3. **Load unpacked** → select the unzipped `fc27-sbc-solver-vX.Y.Z` folder (the one containing `manifest.json`).
-4. Open the [FC 27 Web App](https://www.ea.com/ea-sports-fc/ultimate-team/web-app/) and press F5.
+4. Open the Web App and press F5.
 
-The **SBC Solver** panel appears bottom-left. Its pill should say **Solver ready** (blue dot).
+**Update:** download the new release, replace the folder's contents with it, press reload ↻ on the extension card, then F5 the Web App. (Keeping the same folder keeps your settings.) Chrome may warn about developer-mode extensions on startup; that's normal for unpacked extensions.
 
-**Update:** download the new release, replace the folder's contents with it, press reload ↻ on the extension card, then F5 the Web App. (Keeping the same folder keeps your settings.)
-
-Chrome may warn about developer-mode extensions on startup; that's normal for unpacked extensions.
+</details>
 
 ## Use
 
+<p>
+  <img width="49%" alt="Screenshot 2026-10-23 091957 (1)" src="https://github.com/user-attachments/assets/4be1f4d0-088c-4b0c-a063-e83e014a9859" />
+
+  <img width="49%" alt="Screenshot 2026-10-23 091928 (1)" src="https://github.com/user-attachments/assets/16f3f1bd-ac96-4305-a518-0faf57c90d5a" />
+
+</p>
+
 1. Open an SBC. An **Auto Complete** button (blue outline) appears in the app's SBC sidebar; on a set's overview page it's **Auto Complete Set**.
-2. Pick options (tradeable players, special players, storage first, exclude active squad, solve multiple times, rating ranges, …) in the Auto Complete dialog, and press **Find squad**. The panel shows each step as it works.
+2. Pick your options and press **Find squad**. The summary at the bottom of the dialog says exactly what will happen, and the panel shows each step as it works.
 3. Check the squad, then press **Submit** in the app. **Undo fill** in the panel puts back what was there before.
+
+**Auto Complete options**
+
+- **Use:** tradeable players, special players, concept players, and **Ignore exclusions** (ignores the max player value and any excluded players).
+- **Take from:** SBC storage first, unassigned duplicates, transfer list duplicates, and keep players already in the squad.
+- **Leave out:** your active squad, and rares unless the SBC requires them.
+- **Ratings:** a rating range, plus a separate range for special cards.
+- **Strategy:** pick by **Price** (cheapest squad) or **Rating** (lowest-rated squad), and complete **This challenge** or the **Whole set**.
+- **Repeat:** solve a repeatable SBC multiple times.
+
+**More**
 
 - **Whole sets / solve multiple times:** a preview lists every squad (no player used twice) before anything is placed. Toggle off any you don't want, then press **Complete** (the default) to fill and submit each remaining squad back to back, or **Fill only** to place them and submit yourself. If your club can't cover all of them, you get the ones that are possible. Submitting can't be undone; it stops at the first squad the app doesn't accept.
 - **Gallery (points) SBCs:** on the card-grid screen, Auto Complete finds the cheapest cards whose FUT Gallery points reach the target, using at most **Max cards** (a 1–30 slider; fewer cards means higher-rated ones, so use the rating range to protect cards you want to keep). **Submit N cards** (the default) selects and submits them; **Select on grid** only ticks them so you can press Review Selection yourself.
-- **Concept players** (option in Auto Complete): when your club can't cover an SBC, the missing slots are filled with concept players found through EA's own concept search, marked **to buy** with an estimated price (the median EA price of your cards at that rating; 150 + OVR below 75). Squads containing concept players are filled, never submitted: buy those cards first.
-- **Price badges on cards:** coin value (EA market average), green `$` = tradeable, grey 🚫 = untradeable, blue = from SBC storage. Values with `~` and a dashed border are estimates (EA has no price for that card): the median EA price of your own cards with the same rating.
-- **Squad value** in the SBC header, and a value summary on store pack previews.
-- ⚙ in the panel: turn each display on or off (card price badges, squad value, pack value, SBC values on the SBC page), plus max player value (0 = no limit) and time limit. Click the panel header to collapse it.
+- **Concept players:** when your club can't cover an SBC, the missing slots are filled with concept players found through EA's own concept search, marked **to buy** with an estimated price (the median EA price of your cards at that rating; 150 + OVR below 75). Squads containing concept players are filled, never submitted: buy those cards first.
+- **Price badges on cards:** coin value (EA market average), green `$` = tradeable, grey 🚫 = untradeable, blue = from SBC storage, ◆ = FUT Gallery score. Values with `~` and a dashed border are estimates (EA has no price for that card): the median EA price of your own cards with the same rating.
+- **Squad value** in the SBC header, pack value on store previews, and estimated SBC values on the SBC page.
+- ⚙ in the panel: turn each display on or off, plus max player value (0 = no limit) and time limit. Click the panel header to collapse it.
 
 ## How it works
 
@@ -44,20 +74,6 @@ Chrome may warn about developer-mode extensions on startup; that's normal for un
 - Every squad is re-checked by independent rule code before it's placed. Game rules (team rating rounding, chemistry thresholds, bricks) are confirmed against the app; see [docs/webapp-internals.md](docs/webapp-internals.md).
 - Cost: EA market average. Untradeables and SBC storage count at 30% of their value. Excluded by default: loans, special cards, players in evolutions, anyone worth over 50k.
 
-## Development
-
-Run from source: **Load unpacked** the repo's `extension/` folder. After editing files: reload the extension card, then F5 the Web App tab.
-
-**Releasing:** bump `"version"` in `extension/manifest.json`, commit, then push a matching tag (`git tag v1.0.1`, `git push origin v1.0.1`). The [release workflow](.github/workflows/release.yml) builds the zip and publishes the release.
-
-Tests (Node 20+), about 90 s, using the dumps in `test/fixtures/`:
-
-```bash
-cd extension
-node --test test/solver.test.js
-```
-
-**Developer tools** (Probe, Dump club, Dump SBC, Dump all SBCs, Gallery/Concept probe) are commented out in `buildDrawer()` in `extension/src/content.js` so they don't ship; uncomment that block to get them back under ⚙. Put reviewed dumps in `test/fixtures/`. Dumps can contain account identifiers; check before committing.
 
 ### Reference solver (Python, optional)
 
@@ -75,7 +91,7 @@ python -m venv .venv
 
 ## Privacy
 
-Nothing leaves your browser except the Web App's own requests to EA. Details: [PRIVACY.md](PRIVACY.md). Chrome Web Store submission notes: [docs/chrome-web-store.md](docs/chrome-web-store.md).
+Nothing leaves your browser except the Web App's own requests to EA. Details: [PRIVACY.md](PRIVACY.md).
 
 ## Credits
 
